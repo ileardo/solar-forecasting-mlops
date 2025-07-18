@@ -1,6 +1,5 @@
 [tool.pylint.messages_control]
 disable = [
-    "F0001",
     "no-member"
 ]
 
@@ -14,26 +13,3 @@ use_parentheses = true
 ensure_newline_before_comments = true
 lines_after_imports = 2
 sections = ["FUTURE", "LOCALFOLDER","FIRSTPARTY", "STDLIB","THIRDPARTY"]
-
-[tool.flake8]
-max-line-length = 88
-extend-ignore = [
-    "E203",  # Whitespace before ':' (conflicts with black)
-    "E501",  # Line too long (handled by black)
-    "W503",  # Line break before binary operator (conflicts with black)
-    "F401",  # Module imported but unused (common in __init__.py)
-]
-exclude = [
-    ".git",
-    "__pycache__",
-    ".pytest_cache",
-    ".mypy_cache",
-    "venv",
-    ".venv",
-    "build",
-    "dist",
-    "data/raw"
-]
-per-file-ignores = [
-    "__init__.py:F401",  # Allow unused imports in __init__ files
-]

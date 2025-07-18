@@ -1,63 +1,20 @@
-# Solar Forecasting MLOps - Pre-commit Configuration (Ultra-Streamlined)
-# Only essential tools: black, isort, pylint
-
 repos:
-  # Basic file hygiene (essential only)
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-merge-conflict
-      - id: check-added-large-files
-        args: [--maxkb=10000]
-      - id: check-ast  # Python syntax check only
-
-  # Python code formatting
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
-    hooks:
-      - id: black
-        language_version: python3
-        files: \.(py)$
-
-  # Import sorting
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        files: \.(py)$
-
-  # Python linting (configured to be less strict)
-  - repo: https://github.com/pycqa/pylint
-    rev: v2.17.5
-    hooks:
-      - id: pylint
-        files: ^src/.*\.py$  # Only lint src/ directory
-        args: [--disable=C0301,E1101,C0103,W0718]  # Disable problematic rules
-        additional_dependencies:
-          - pydantic>=2.0.0
-          - pydantic-settings>=2.0.0
-
-# Global settings
-exclude: |
-  (?x)^(
-      \.git/.*|
-      __pycache__/.*|
-      \.pytest_cache/.*|
-      \.mypy_cache/.*|
-      build/.*|
-      dist/.*|
-      venv/.*|
-      \.venv/.*|
-      data/raw/.*|
-      mlruns/.*|
-      artifacts/.*|
-      tests/.*
-  )$
-
-# CI settings
-ci:
-  autofix_commit_msg: '[pre-commit.ci] auto fixes'
-  autofix_prs: true
-  autoupdate_schedule: monthly
+  # Basic file hygiene
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v3.2.0
+  hooks:
+    - id: trailing-whitespace
+    - id: end-of-file-fixer
+    - id: check-yaml
+    - id: check-added-large-files
+- repo: local
+  hooks:
+    - id: pytest-check
+      name: pytest-check
+      entry: pytest
+      language: system
+      pass_filenames: false
+      always_run: true
+      args: [
+        "tests/"
+      ]

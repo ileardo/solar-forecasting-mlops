@@ -95,15 +95,15 @@ setup_env_file() {
     # Copy template to .env
     cp "${ENV_EXAMPLE}" "${ENV_FILE}"
 
-    # Generate secure random values
-    DB_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
-    API_SECRET_KEY=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
-    JUPYTER_TOKEN=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+    # Generate secure random values (alphanumeric only to avoid sed issues)
+    DB_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/\n" | head -c 20)
+    API_SECRET_KEY=$(openssl rand -base64 64 | tr -d "=+/\n" | head -c 50)
+    JUPYTER_TOKEN=$(openssl rand -base64 32 | tr -d "=+/\n" | head -c 30)
 
-    # Replace placeholder values
-    sed -i "s/your_secure_password/${DB_PASSWORD}/g" "${ENV_FILE}"
-    sed -i "s/your_super_secret_key_change_in_production/${API_SECRET_KEY}/g" "${ENV_FILE}"
-    sed -i "s/your_jupyter_token/${JUPYTER_TOKEN}/g" "${ENV_FILE}"
+    # Use delimiter that won't conflict with password characters
+    sed -i "s|your_secure_password|${DB_PASSWORD}|g" "${ENV_FILE}"
+    sed -i "s|your_super_secret_key_change_in_production|${API_SECRET_KEY}|g" "${ENV_FILE}"
+    sed -i "s|your_jupyter_token|${JUPYTER_TOKEN}|g" "${ENV_FILE}"
 
     log "Environment file created with secure random values"
     log_info "Database password: ${DB_PASSWORD}"

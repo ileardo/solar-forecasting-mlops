@@ -409,8 +409,8 @@ def validate_required_env_vars() -> Dict[str, bool]:
 
         results["overall"] = all(results.values())
 
-    except Exception as e:
-        results["error"] = str(e)
+    except Exception as exception_error:
+        results["error"] = str(exception_error)
         results["overall"] = False
 
     return results
