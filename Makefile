@@ -1,8 +1,8 @@
-# Solar Forecasting MLOps - Development Automation
+# Solar Forecasting MLOps - Streamlined Development Automation
 # Author: MLOps Team
-# Description: Comprehensive automation for development workflow
+# Description: Essential automation for development workflow
 
-.PHONY: help setup install install-dev test test-unit test-integration lint format clean clean-all docker-build docker-up docker-down
+.PHONY: help setup install install-dev test test-unit test-integration lint format format-check clean clean-all clean-conda docker-build docker-up docker-down docker-logs docker-clean mlflow-ui mlflow-ui-conda mlflow-clean pre-commit-install pre-commit-run conda-create conda-install conda-install-dev conda-remove conda-info db-init db-init-conda db-migrate db-migrate-conda db-reset dev-setup dev-check dev-check-conda prod-test prod-test-conda prod-build info conda-activate-help
 
 # Default target
 .DEFAULT_GOAL := help
@@ -16,12 +16,9 @@ PROJECT_NAME := solar-forecasting-mlops
 # Directories
 SRC_DIR := src
 TEST_DIR := tests
-DATA_DIR := data
-DOCKER_DIR := infrastructure/docker
 
 # Docker settings
 DOCKER_COMPOSE := docker-compose.yml
-SERVICES := postgres mlflow localstack grafana
 
 help: ## Show this help message
 	@echo "Solar Forecasting MLOps - Available Commands:"
@@ -93,47 +90,15 @@ test-integration: ## Run integration tests only
 	pytest $(TEST_DIR)/integration -v --tb=short
 	@echo "Integration tests completed!"
 
-test-watch: ## Run tests in watch mode
-	@echo "Running tests in watch mode..."
-	pytest-watch $(TEST_DIR) --runner "pytest -v"
-
-test-conda: ## Run all tests in conda environment
-	@echo "Running tests in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) pytest $(TEST_DIR) -v --cov=$(SRC_DIR) --cov-report=term-missing
-
 # Code Quality
 lint: ## Run all linting checks
 	@echo "Running linting checks..."
-	$(MAKE) lint-pylint
-	$(MAKE) lint-black-check
-	$(MAKE) lint-isort-check
-	$(MAKE) lint-mypy
+	pylint $(SRC_DIR)
+	black --check --diff $(SRC_DIR) $(TEST_DIR)
+	isort --check-only --diff $(SRC_DIR) $(TEST_DIR)
+	mypy $(SRC_DIR)
 	@echo "All linting checks completed!"
 
-lint-pylint: ## Run pylint
-	@echo "Running pylint..."
-	pylint $(SRC_DIR)
-
-lint-black-check: ## Check code formatting with black
-	@echo "Checking code formatting..."
-	black --check --diff $(SRC_DIR) $(TEST_DIR)
-
-lint-isort-check: ## Check import sorting with isort
-	@echo "Checking import sorting..."
-	isort --check-only --diff $(SRC_DIR) $(TEST_DIR)
-
-lint-mypy: ## Run type checking with mypy
-	@echo "Running type checks..."
-	mypy $(SRC_DIR)
-
-lint-conda: ## Run all linting checks in conda environment
-	@echo "Running linting checks in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) pylint $(SRC_DIR)
-	$(CONDA) run -n $(CONDA_ENV) black --check --diff $(SRC_DIR) $(TEST_DIR)
-	$(CONDA) run -n $(CONDA_ENV) isort --check-only --diff $(SRC_DIR) $(TEST_DIR)
-	$(CONDA) run -n $(CONDA_ENV) mypy $(SRC_DIR)
-
-# Code Formatting
 format: ## Format code with black and isort
 	@echo "Formatting code..."
 	black $(SRC_DIR) $(TEST_DIR)
@@ -145,11 +110,6 @@ format-check: ## Check if code needs formatting
 	black --check $(SRC_DIR) $(TEST_DIR)
 	isort --check-only $(SRC_DIR) $(TEST_DIR)
 
-format-conda: ## Format code in conda environment
-	@echo "Formatting code in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) black $(SRC_DIR) $(TEST_DIR)
-	$(CONDA) run -n $(CONDA_ENV) isort $(SRC_DIR) $(TEST_DIR)
-
 # Pre-commit Hooks
 pre-commit-install: ## Install pre-commit hooks
 	@echo "Installing pre-commit hooks..."
@@ -159,26 +119,6 @@ pre-commit-install: ## Install pre-commit hooks
 pre-commit-run: ## Run pre-commit on all files
 	@echo "Running pre-commit checks..."
 	pre-commit run --all-files
-
-pre-commit-conda: ## Install and run pre-commit in conda environment
-	@echo "Setting up pre-commit in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) pre-commit install
-	$(CONDA) run -n $(CONDA_ENV) pre-commit run --all-files
-
-# Data Management
-data-download: ## Download dataset from source
-	@echo "Downloading dataset..."
-	@mkdir -p $(DATA_DIR)/raw
-	@echo "Manual download required from Kaggle"
-	@echo "URL: https://www.kaggle.com/datasets/anikannal/solar-power-generation-data"
-
-data-validate: ## Validate raw dataset
-	@echo "Validating dataset..."
-	$(PYTHON) -c "from $(SRC_DIR).data.loader import SolarDataLoader; SolarDataLoader.validate_raw_data('$(DATA_DIR)/raw')"
-
-data-validate-conda: ## Validate dataset in conda environment
-	@echo "Validating dataset in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) python -c "from $(SRC_DIR).data.loader import SolarDataLoader; SolarDataLoader.validate_raw_data('$(DATA_DIR)/raw')"
 
 # MLflow Management
 mlflow-ui: ## Start MLflow UI
@@ -266,7 +206,7 @@ clean-conda: clean ## Clean cache and remove conda environment
 dev-setup: ## Complete development setup with conda
 	@echo "Setting up development environment with conda..."
 	$(MAKE) conda-install-dev
-	$(MAKE) pre-commit-conda
+	$(MAKE) pre-commit-install
 	@echo "Development environment ready!"
 
 dev-check: ## Run all development checks
@@ -278,8 +218,8 @@ dev-check: ## Run all development checks
 
 dev-check-conda: ## Run all development checks in conda environment
 	@echo "Running all development checks in conda environment..."
-	$(MAKE) lint-conda
-	$(MAKE) test-conda
+	$(CONDA) run -n $(CONDA_ENV) pylint $(SRC_DIR)
+	$(CONDA) run -n $(CONDA_ENV) pytest $(TEST_DIR) -v --tb=short --disable-warnings
 	$(CONDA) run -n $(CONDA_ENV) black --check $(SRC_DIR) $(TEST_DIR)
 	$(CONDA) run -n $(CONDA_ENV) isort --check-only $(SRC_DIR) $(TEST_DIR)
 	@echo "All conda checks passed!"
@@ -293,7 +233,7 @@ prod-test: ## Run production-like tests
 prod-test-conda: ## Run production tests in conda environment
 	@echo "Running production tests in conda environment..."
 	$(CONDA) run -n $(CONDA_ENV) pytest $(TEST_DIR) -v --tb=short --disable-warnings
-	$(MAKE) lint-conda
+	$(CONDA) run -n $(CONDA_ENV) pylint $(SRC_DIR)
 
 prod-build: ## Build production artifacts
 	@echo "Building production artifacts..."
