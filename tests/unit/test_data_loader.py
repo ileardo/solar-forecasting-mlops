@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
+
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
 

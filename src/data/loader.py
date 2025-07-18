@@ -7,9 +7,15 @@ and weather sensor data from Kaggle dataset.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import (
+    Any,
+    Dict,
+    Optional,
+    Tuple
+)
 
 import pandas as pd
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
