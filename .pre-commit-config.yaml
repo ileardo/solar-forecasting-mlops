@@ -1,0 +1,200 @@
+repos:
+  # Pre-commit hooks updates
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # Basic file checks
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: [--maxkb=10000]  # 10MB limit
+      
+      # Python specific checks
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: name-tests-test
+      
+      # Data/Config file checks
+      - id: check-yaml
+        exclude: ^.*(docker-compose|grafana).*\.ya?ml$
+      - id: check-toml
+      - id: check-json
+      - id: pretty-format-json
+        args: [--autofix, --no-sort-keys, --indent=2]
+      
+      # Security checks
+      - id: detect-private-key
+      - id: check-executables-have-shebangs
+
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: [--config=pyproject.toml]
+        files: ^(src/|tests/|scripts/).*\.py$
+
+  # Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: [--settings-path=pyproject.toml]
+        files: ^(src/|tests/|scripts/).*\.py$
+
+  # Python linting
+  - repo: https://github.com/pycqa/pylint
+    rev: v2.17.5
+    hooks:
+      - id: pylint
+        args: [--rcfile=pyproject.toml]
+        files: ^src/.*\.py$
+        additional_dependencies:
+          - pandas>=2.0.0
+          - numpy>=1.24.0
+          - scikit-learn>=1.3.0
+          - mlflow>=2.8.0
+          - prefect>=2.14.0
+          - evidently>=0.4.0
+          - psycopg2-binary>=2.9.0
+          - sqlalchemy>=2.0.0
+          - pydantic>=2.0.0
+
+  # Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.5.1
+    hooks:
+      - id: mypy
+        args: [--config-file=pyproject.toml]
+        files: ^src/.*\.py$
+        additional_dependencies:
+          - types-requests
+          - types-python-dateutil
+          - types-PyYAML
+          - pandas-stubs
+          - sqlalchemy-stubs
+
+  # Security scanning
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [--configfile=pyproject.toml, --severity-level=medium]
+        files: ^src/.*\.py$
+        exclude: ^tests/.*
+
+  # Documentation checks
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        files: ^src/.*\.py$
+        args: [--convention=google, --add-ignore=D100,D104,D105]
+
+  # Notebook cleaning (for development notebooks)
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.7.0
+    hooks:
+      - id: nbqa-black
+        args: [--config=pyproject.toml]
+        files: ^notebooks/.*\.ipynb$
+      - id: nbqa-isort
+        args: [--settings-path=pyproject.toml]
+        files: ^notebooks/.*\.ipynb$
+
+  # MLOps specific checks
+  - repo: local
+    hooks:
+      # Check for hardcoded credentials
+      - id: check-credentials
+        name: Check for hardcoded credentials
+        entry: bash -c 'if grep -r -i -E "(password|secret|key|token)\s*=\s*[\"'\''][^\"\']*[\"'\'']" src/ --include="*.py"; then echo "Hardcoded credentials found!"; exit 1; fi'
+        language: system
+        files: ^src/.*\.py$
+      
+      # Check for print statements in production code
+      - id: check-print-statements
+        name: Check for print statements in production code
+        entry: bash -c 'if grep -r "print(" src/ --include="*.py" --exclude-dir=tests; then echo "Print statements found in production code! Use logging instead."; exit 1; fi'
+        language: system
+        files: ^src/.*\.py$
+      
+      # Validate MLflow experiment names
+      - id: check-mlflow-experiments
+        name: Check MLflow experiment naming
+        entry: bash -c 'if grep -r -E "set_experiment\([\"'\''][^\"\']*[\"'\'']" src/ --include="*.py" | grep -v -E "(test|experiment|solar)"; then echo "MLflow experiment names should follow naming convention"; exit 1; fi'
+        language: system
+        files: ^src/.*\.py$
+      
+      # Check for TODO/FIXME in production code
+      - id: check-todos
+        name: Check for TODO/FIXME in production code
+        entry: bash -c 'if grep -r -i -E "(TODO|FIXME|XXX)" src/ --include="*.py"; then echo "TODO/FIXME found in production code!"; exit 1; fi'
+        language: system
+        files: ^src/.*\.py$
+        exclude: ^tests/.*
+
+  # Docker and Infrastructure checks
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        files: ^.*Dockerfile.*$
+
+  # YAML/Config validation
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.32.0
+    hooks:
+      - id: yamllint
+        args: [-d, relaxed]
+        files: ^(\.github/|infrastructure/|grafana/).*\.ya?ml$
+
+  # SQL formatting (for database schemas)
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 2.3.2
+    hooks:
+      - id: sqlfluff-lint
+        files: ^sql/.*\.sql$
+        args: [--dialect=postgres]
+      - id: sqlfluff-fix
+        files: ^sql/.*\.sql$
+        args: [--dialect=postgres]
+
+# Pre-commit configuration
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
+
+# Exclude patterns for all hooks
+exclude: |
+  (?x)^(
+      \.git/.*|
+      \.mypy_cache/.*|
+      \.pytest_cache/.*|
+      __pycache__/.*|
+      .*\.egg-info/.*|
+      build/.*|
+      dist/.*|
+      venv/.*|
+      \.venv/.*|
+      htmlcov/.*|
+      \.coverage.*|
+      mlruns/.*|
+      artifacts/.*|
+      data/raw/.*|
+      monitoring_logs/.*
+  )$
