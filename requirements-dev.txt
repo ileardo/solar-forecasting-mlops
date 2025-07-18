@@ -41,13 +41,13 @@ sqlalchemy-utils>=0.41.0
 
 # API Testing
 httpx>=0.24.0
-fastapi[testing]>=0.100.0
+fastapi>=0.100.0
 
 # MLflow Testing
 mlflow-skinny>=2.8.0
 
 # Monitoring Testing
-evidently[testing]>=0.4.0
+evidently>=0.4.0
 
 # Linting Specific Plugins
 pylint-pytest>=1.1.0
