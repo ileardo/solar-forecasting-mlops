@@ -11,14 +11,14 @@ repos:
       - id: check-case-conflict
       - id: check-added-large-files
         args: [--maxkb=10000]  # 10MB limit
-      
+
       # Python specific checks
       - id: check-ast
       - id: check-builtin-literals
       - id: check-docstring-first
       - id: debug-statements
       - id: name-tests-test
-      
+
       # Data/Config file checks
       - id: check-yaml
         exclude: ^.*(docker-compose|grafana).*\.ya?ml$
@@ -26,7 +26,7 @@ repos:
       - id: check-json
       - id: pretty-format-json
         args: [--autofix, --no-sort-keys, --indent=2]
-      
+
       # Security checks
       - id: detect-private-key
       - id: check-executables-have-shebangs
@@ -117,21 +117,21 @@ repos:
         entry: bash -c 'if grep -r -i -E "(password|secret|key|token)\s*=\s*[\"'\''][^\"\']*[\"'\'']" src/ --include="*.py"; then echo "Hardcoded credentials found!"; exit 1; fi'
         language: system
         files: ^src/.*\.py$
-      
+
       # Check for print statements in production code
       - id: check-print-statements
         name: Check for print statements in production code
         entry: bash -c 'if grep -r "print(" src/ --include="*.py" --exclude-dir=tests; then echo "Print statements found in production code! Use logging instead."; exit 1; fi'
         language: system
         files: ^src/.*\.py$
-      
+
       # Validate MLflow experiment names
       - id: check-mlflow-experiments
         name: Check MLflow experiment naming
         entry: bash -c 'if grep -r -E "set_experiment\([\"'\''][^\"\']*[\"'\'']" src/ --include="*.py" | grep -v -E "(test|experiment|solar)"; then echo "MLflow experiment names should follow naming convention"; exit 1; fi'
         language: system
         files: ^src/.*\.py$
-      
+
       # Check for TODO/FIXME in production code
       - id: check-todos
         name: Check for TODO/FIXME in production code

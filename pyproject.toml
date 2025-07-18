@@ -82,7 +82,7 @@ known_third_party = [
 ]
 sections = [
     "FUTURE",
-    "STDLIB", 
+    "STDLIB",
     "THIRDPARTY",
     "FIRSTPARTY",
     "LOCALFOLDER"
@@ -102,7 +102,7 @@ source-roots = ["src"]
 disable = [
     "too-few-public-methods",
     "too-many-arguments",
-    "too-many-locals", 
+    "too-many-locals",
     "too-many-branches",
     "too-many-statements",
     "duplicate-code",
@@ -168,7 +168,7 @@ show_error_codes = true
 [[tool.mypy.overrides]]
 module = [
     "mlflow.*",
-    "prefect.*", 
+    "prefect.*",
     "evidently.*",
     "psycopg2.*",
     "boto3.*",
@@ -201,7 +201,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [
     "unit: Unit tests",
-    "integration: Integration tests", 
+    "integration: Integration tests",
     "slow: Slow running tests",
     "gpu: Tests requiring GPU",
     "external: Tests requiring external services"
@@ -261,7 +261,7 @@ extend-ignore = [
 ]
 exclude = [
     ".git",
-    "__pycache__", 
+    "__pycache__",
     ".pytest_cache",
     ".mypy_cache",
     "venv",
