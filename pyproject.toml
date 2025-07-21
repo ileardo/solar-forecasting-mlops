@@ -2,6 +2,7 @@
 disable = [
     "no-member",
     "logging-fstring-interpolation",
+    "too-many-instance-attributes",
 ]
 
 [tool.isort]

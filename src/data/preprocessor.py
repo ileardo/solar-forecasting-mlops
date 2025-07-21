@@ -6,6 +6,7 @@ including temporal features, weather derivatives, and lag patterns.
 """
 
 import logging
+import pickle
 import warnings
 from typing import (
     Any,
@@ -72,13 +73,15 @@ class SolarDataPreprocessor:
 
         # Feature metadata
         self.feature_metadata: Dict[str, Any] = {}
+        self.fitted_feature_names: List[str] = []
+        self.fitted_numeric_features: List[str] = []
         self.is_fitted = False
 
         logger.info(
             f"Initialized SolarDataPreprocessor with frequency={target_frequency}"
         )
 
-    def load_and_merge_data(
+    def _load_and_merge_data(
         self, generation_path: str, weather_path: str
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
@@ -142,7 +145,7 @@ class SolarDataPreprocessor:
             logger.error(f"Failed to load and merge data: {str(e)}")
             raise
 
-    def create_temporal_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _create_temporal_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Create comprehensive temporal features for solar forecasting.
 
@@ -183,7 +186,7 @@ class SolarDataPreprocessor:
         logger.info("Temporal features created successfully")
         return df_features
 
-    def create_weather_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _create_weather_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Create weather-derived features for enhanced prediction accuracy.
 
@@ -232,7 +235,7 @@ class SolarDataPreprocessor:
         logger.info("Weather features created successfully")
         return df_features
 
-    def create_lag_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _create_lag_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Create lag features for capturing temporal dependencies.
 
@@ -285,7 +288,7 @@ class SolarDataPreprocessor:
         logger.info("Lag features created successfully")
         return df_features
 
-    def resample_to_target_frequency(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _resample_to_target_frequency(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Resample data to target frequency with appropriate aggregation.
 
@@ -341,7 +344,7 @@ class SolarDataPreprocessor:
         logger.info(f"Resampled to {len(df_resampled):,} records")
         return df_resampled
 
-    def validate_data_quality(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _validate_data_quality(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
         Validate data quality and identify potential issues.
 
@@ -420,20 +423,20 @@ class SolarDataPreprocessor:
         logger.info("Starting complete preprocessing pipeline...")
 
         # Step 1: Load and merge data
-        merged_df, load_metadata = self.load_and_merge_data(
+        merged_df, load_metadata = self._load_and_merge_data(
             generation_path, weather_path
         )
 
         # Step 2: Create all features
-        processed_df = self.create_temporal_features(merged_df)
-        processed_df = self.create_weather_features(processed_df)
-        processed_df = self.create_lag_features(processed_df)
+        processed_df = self._create_temporal_features(merged_df)
+        processed_df = self._create_weather_features(processed_df)
+        processed_df = self._create_lag_features(processed_df)
 
         # Step 3: Resample to target frequency
-        processed_df = self.resample_to_target_frequency(processed_df)
+        processed_df = self._resample_to_target_frequency(processed_df)
 
         # Step 4: Data quality validation
-        quality_report = self.validate_data_quality(processed_df)
+        quality_report = self._validate_data_quality(processed_df)
 
         # Step 5: Handle categorical variables
         processed_df = pd.get_dummies(
@@ -456,6 +459,12 @@ class SolarDataPreprocessor:
         processed_df = processed_df.dropna()
         final_rows = len(processed_df)
 
+        # Store fitted parameters for transform method
+        self.fitted_feature_names = [
+            col for col in processed_df.columns if col != "DATE_TIME"
+        ]
+        self.fitted_numeric_features = numeric_features
+
         # Compile metadata
         self.feature_metadata = {
             "load_metadata": load_metadata,
@@ -476,6 +485,8 @@ class SolarDataPreprocessor:
                     include=["uint8"]
                 ).shape[1],
             },
+            "feature_names": self.fitted_feature_names,
+            "numeric_features": self.fitted_numeric_features,
             "target_frequency": self.target_frequency,
             "scaling_method": self.scaling_method,
         }
@@ -489,7 +500,7 @@ class SolarDataPreprocessor:
 
     def transform(self, generation_path: str, weather_path: str) -> pd.DataFrame:
         """
-        Transform new data using fitted preprocessor.
+        Transform new data using fitted preprocessor parameters.
 
         Args:
             generation_path: Path to generation CSV file.
@@ -504,9 +515,84 @@ class SolarDataPreprocessor:
         if not self.is_fitted:
             raise RuntimeError("Preprocessor must be fitted before transform")
 
-        # Apply same transformation pipeline
-        processed_df, _ = self.fit_transform(generation_path, weather_path)
+        logger.info("Transforming new data using fitted parameters...")
+
+        # Step 1: Load and merge data (same as fit)
+        merged_df, _ = self._load_and_merge_data(generation_path, weather_path)
+
+        # Step 2: Apply all transformations (without fitting)
+        processed_df = self._create_temporal_features(merged_df)
+        processed_df = self._create_weather_features(processed_df)
+        processed_df = self._create_lag_features(processed_df)
+        processed_df = self._resample_to_target_frequency(processed_df)
+
+        # Step 3: Apply fitted categorical encoding
+        processed_df = pd.get_dummies(
+            processed_df, columns=["season", "temp_category", "irradiation_category"]
+        )
+
+        # Ensure same columns as training (handle missing categories)
+        for col in self.fitted_feature_names:
+            if col not in processed_df.columns and col != "AC_POWER":
+                processed_df[col] = 0
+
+        # Reorder columns to match training
+        available_features = [
+            col for col in self.fitted_feature_names if col in processed_df.columns
+        ]
+        processed_df = processed_df[["DATE_TIME", "AC_POWER"] + available_features]
+
+        # Step 4: Apply fitted scaling
+        if self.scaler is not None:
+            numeric_features = [
+                col
+                for col in self.fitted_numeric_features
+                if col in processed_df.columns
+            ]
+            processed_df[numeric_features] = self.scaler.transform(
+                processed_df[numeric_features]
+            )
+
+        # Step 5: Remove NaN rows
+        processed_df = processed_df.dropna()
+
+        logger.info(f"Transform complete! Shape: {processed_df.shape}")
         return processed_df
+
+    def save_preprocessor(self, filepath: str) -> None:
+        """
+        Save fitted preprocessor to pickle file.
+
+        Args:
+            filepath: Path to save the preprocessor pickle file.
+
+        Raises:
+            RuntimeError: When preprocessor is not fitted.
+        """
+        if not self.is_fitted:
+            raise RuntimeError("Preprocessor must be fitted before saving")
+
+        with open(filepath, "wb") as f:
+            pickle.dump(self, f)
+
+        logger.info(f"Preprocessor saved to: {filepath}")
+
+    @staticmethod
+    def load_preprocessor(filepath: str) -> "SolarDataPreprocessor":
+        """
+        Load fitted preprocessor from pickle file.
+
+        Args:
+            filepath: Path to the preprocessor pickle file.
+
+        Returns:
+            SolarDataPreprocessor: Loaded and fitted preprocessor.
+        """
+        with open(filepath, "rb") as f:
+            preprocessor = pickle.load(f)
+
+        logger.info(f"Preprocessor loaded from: {filepath}")
+        return preprocessor
 
     def get_feature_names(self) -> List[str]:
         """
@@ -521,5 +607,31 @@ class SolarDataPreprocessor:
         if not self.is_fitted:
             raise RuntimeError("Preprocessor must be fitted to get feature names")
 
-        # This would be set during fit_transform
-        return self.feature_metadata.get("feature_names", [])
+        return self.fitted_feature_names.copy()
+
+    def get_preprocessing_info(self) -> Dict[str, Any]:
+        """
+        Get comprehensive preprocessing information.
+
+        Returns:
+            Dict[str, Any]: Complete preprocessing metadata and configuration.
+
+        Raises:
+            RuntimeError: When preprocessor is not fitted.
+        """
+        if not self.is_fitted:
+            raise RuntimeError("Preprocessor must be fitted to get info")
+
+        return {
+            "configuration": {
+                "target_frequency": self.target_frequency,
+                "lag_hours": self.lag_hours,
+                "scaling_method": self.scaling_method,
+            },
+            "fitted_parameters": {
+                "feature_count": len(self.fitted_feature_names),
+                "numeric_features": len(self.fitted_numeric_features),
+                "scaler_fitted": self.scaler is not None,
+            },
+            "metadata": self.feature_metadata,
+        }
