@@ -5,7 +5,7 @@ This module handles all environment variables and configuration settings
 for the MLOps pipeline, providing type-safe access to all service configurations.
 """
 
-#pylint: disable=line-too-long, broad-exception-caught
+# pylint: disable=line-too-long, broad-exception-caught
 
 from functools import lru_cache
 from pathlib import Path

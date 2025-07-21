@@ -1,6 +1,7 @@
 [tool.pylint.messages_control]
 disable = [
-    "no-member"
+    "no-member",
+    "logging-fstring-interpolation",
 ]
 
 [tool.isort]
