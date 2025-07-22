@@ -81,7 +81,7 @@ class SolarDataPreprocessor:
             f"Initialized SolarDataPreprocessor with frequency={target_frequency}"
         )
 
-    def _load_and_merge_data(
+    def load_and_merge_data(
         self, generation_path: str, weather_path: str
     ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
@@ -423,7 +423,7 @@ class SolarDataPreprocessor:
         logger.info("Starting complete preprocessing pipeline...")
 
         # Step 1: Load and merge data
-        merged_df, load_metadata = self._load_and_merge_data(
+        merged_df, load_metadata = self.load_and_merge_data(
             generation_path, weather_path
         )
 
@@ -518,7 +518,7 @@ class SolarDataPreprocessor:
         logger.info("Transforming new data using fitted parameters...")
 
         # Step 1: Load and merge data (same as fit)
-        merged_df, _ = self._load_and_merge_data(generation_path, weather_path)
+        merged_df, _ = self.load_and_merge_data(generation_path, weather_path)
 
         # Step 2: Apply all transformations (without fitting)
         processed_df = self._create_temporal_features(merged_df)
