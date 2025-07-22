@@ -1,0 +1,132 @@
+services:
+
+  # --- 1. PostgreSQL Database ---
+  # Backend for MLflow, Grafana and monitoring data
+  postgres:
+    image: postgres:15-alpine
+    container_name: solar-postgres
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # healthcheck to ensure PostgreSQL is ready
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - solar-network
+
+  # --- 2. Localstack ---
+  # AWS S3 mock for MLflow artifact storage
+  localstack:
+    image: localstack/localstack:2.3
+    container_name: solar-localstack
+    environment:
+      - SERVICES=s3
+      - PERSISTENCE=1
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      # checks that the S3 service is ready
+      test: ["CMD", "awslocal", "s3", "ls"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - solar-network
+
+  # --- 3. Grafana ---
+  # Monitoring dashboard
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: solar-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      # exposed on 3001
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - solar-network
+
+
+  # --- 4. Adminer ---
+  # Utility for managing PostgreSQL database
+  adminer:
+    image: adminer:4.8.1
+    container_name: solar-adminer
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+      - ADMINER_DESIGN=pepa-linha
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - solar-network
+
+  # --- 5. MLflow Tracking Server ---
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: solar-mlflow
+    ports:
+      - "${MLFLOW_UI_PORT:-5000}:5000"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - MLFLOW_S3_ENDPOINT_URL=http://localstack:4566
+    command:
+      - mlflow
+      - server
+      - --host=0.0.0.0
+      - --port=5000
+      # Backend Store: use PostgreSQL database
+      - --backend-store-uri=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      # Artifact Root: use S3 bucket on Localstack
+      - --default-artifact-root=s3://${S3_BUCKET_ARTIFACTS}/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - solar-network
+
+
+volumes:
+  postgres_data:
+    driver: local
+  localstack_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  solar-network:
+    driver: bridge
+    name: solar-forecasting-network

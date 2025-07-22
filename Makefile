@@ -163,17 +163,9 @@ db-init: ## Initialize database schema
 	@echo "Initializing database..."
 	$(PYTHON) -c "from $(SRC_DIR).utils.database import init_database; init_database()"
 
-db-init-conda: ## Initialize database in conda environment
-	@echo "Initializing database in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) python -c "from $(SRC_DIR).utils.database import init_database; init_database()"
-
 db-migrate: ## Run database migrations
 	@echo "Running database migrations..."
 	$(PYTHON) -c "from $(SRC_DIR).utils.database import run_migrations; run_migrations()"
-
-db-migrate-conda: ## Run database migrations in conda environment
-	@echo "Running database migrations in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) python -c "from $(SRC_DIR).utils.database import run_migrations; run_migrations()"
 
 db-reset: ## Reset database (WARNING: destroys all data)
 	@echo "WARNING: Resetting database..."
@@ -229,11 +221,6 @@ prod-test: ## Run production-like tests
 	@echo "Running production tests..."
 	pytest $(TEST_DIR) -v --tb=short --disable-warnings
 	$(MAKE) lint
-
-prod-test-conda: ## Run production tests in conda environment
-	@echo "Running production tests in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) pytest $(TEST_DIR) -v --tb=short --disable-warnings
-	$(CONDA) run -n $(CONDA_ENV) pylint $(SRC_DIR)
 
 prod-build: ## Build production artifacts
 	@echo "Building production artifacts..."

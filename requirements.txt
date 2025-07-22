@@ -46,3 +46,7 @@ pytz>=2023.3
 
 # Pydantic
 pydantic-settings>=2.0.0
+
+# AWS & LocalStack
+awscli>=1.41.10
+awscli-local>=0.22.0
