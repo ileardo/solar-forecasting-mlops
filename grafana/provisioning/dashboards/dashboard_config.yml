@@ -1,0 +1,38 @@
+# Grafana Dashboard Provisioning Configuration
+# File: grafana/provisioning/dashboards/dashboard_config.yml
+
+apiVersion: 1
+
+providers:
+  - name: 'solar-forecasting-dashboards'
+    orgId: 1
+    folder: 'Solar Forecasting MLOps'
+    folderUid: 'solar-mlops'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+
+  - name: 'monitoring-dashboards'
+    orgId: 1
+    folder: 'Model Monitoring'
+    folderUid: 'model-monitoring'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/monitoring
+
+  - name: 'mlflow-dashboards'
+    orgId: 1
+    folder: 'MLflow Tracking'
+    folderUid: 'mlflow-tracking'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/mlflow
