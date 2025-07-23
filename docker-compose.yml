@@ -53,15 +53,20 @@ services:
   grafana:
     image: grafana/grafana:10.2.0
     container_name: solar-grafana
+    ports:
+      - "3001:3000"
     environment:
+      - DB_HOST=postgres
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
-    ports:
-      # exposed on 3001
-      - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       postgres:
         condition: service_healthy
