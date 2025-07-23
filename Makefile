@@ -120,21 +120,6 @@ pre-commit-run: ## Run pre-commit on all files
 	@echo "Running pre-commit checks..."
 	pre-commit run --all-files
 
-# MLflow Management
-mlflow-ui: ## Start MLflow UI
-	@echo "Starting MLflow UI..."
-	mlflow ui --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./artifacts --port 5000
-
-mlflow-ui-conda: ## Start MLflow UI in conda environment
-	@echo "Starting MLflow UI in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) mlflow ui --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./artifacts --port 5000
-
-mlflow-clean: ## Clean MLflow tracking data
-	@echo "Cleaning MLflow data..."
-	rm -rf mlruns/
-	rm -f mlflow.db
-	rm -rf artifacts/
-
 # Infrastructure Management
 docker-build: ## Build Docker containers
 	@echo "Building Docker containers..."
@@ -145,32 +130,22 @@ docker-up: ## Start all services with Docker Compose
 	docker-compose -f $(DOCKER_COMPOSE) up -d
 	@echo "Services started! Check with: docker-compose ps"
 
-docker-down: ## Stop all services
-	@echo "Stopping all services..."
-	docker-compose -f $(DOCKER_COMPOSE) down
+docker-ps: ## Show status of Docker containers
+	@echo "Showing status of Docker containers..."
+	docker-compose -f $(DOCKER_COMPOSE) ps
 
 docker-logs: ## Show logs from all services
 	@echo "Showing service logs..."
 	docker-compose -f $(DOCKER_COMPOSE) logs -f
 
+docker-down: ## Stop all services
+	@echo "Stopping all services..."
+	docker-compose -f $(DOCKER_COMPOSE) down
+
 docker-clean: ## Clean Docker containers and volumes
 	@echo "Cleaning Docker resources..."
 	docker-compose -f $(DOCKER_COMPOSE) down -v --remove-orphans
 	docker system prune -f
-
-# Database Management
-db-init: ## Initialize database schema
-	@echo "Initializing database..."
-	$(PYTHON) -c "from $(SRC_DIR).utils.database import init_database; init_database()"
-
-db-migrate: ## Run database migrations
-	@echo "Running database migrations..."
-	$(PYTHON) -c "from $(SRC_DIR).utils.database import run_migrations; run_migrations()"
-
-db-reset: ## Reset database (WARNING: destroys all data)
-	@echo "WARNING: Resetting database..."
-	@read -p "Are you sure? This will destroy all data [y/N]: " confirm && [ "$$confirm" = "y" ]
-	$(PYTHON) -c "from $(SRC_DIR).utils.database import reset_database; reset_database()"
 
 # Cleaning
 clean: ## Clean cache and temporary files
@@ -193,28 +168,6 @@ clean-conda: clean ## Clean cache and remove conda environment
 	@echo "Cleaning cache and conda environment..."
 	$(MAKE) conda-remove
 	@echo "Complete conda cleanup performed!"
-
-# Development Workflow
-dev-setup: ## Complete development setup with conda
-	@echo "Setting up development environment with conda..."
-	$(MAKE) conda-install-dev
-	$(MAKE) pre-commit-install
-	@echo "Development environment ready!"
-
-dev-check: ## Run all development checks
-	@echo "Running all development checks..."
-	$(MAKE) lint
-	$(MAKE) test
-	$(MAKE) format-check
-	@echo "All checks passed!"
-
-dev-check-conda: ## Run all development checks in conda environment
-	@echo "Running all development checks in conda environment..."
-	$(CONDA) run -n $(CONDA_ENV) pylint $(SRC_DIR)
-	$(CONDA) run -n $(CONDA_ENV) pytest $(TEST_DIR) -v --tb=short --disable-warnings
-	$(CONDA) run -n $(CONDA_ENV) black --check $(SRC_DIR) $(TEST_DIR)
-	$(CONDA) run -n $(CONDA_ENV) isort --check-only $(SRC_DIR) $(TEST_DIR)
-	@echo "All conda checks passed!"
 
 # Production Helpers
 prod-test: ## Run production-like tests
@@ -245,3 +198,30 @@ conda-activate-help: ## Show how to activate conda environment
 	@echo ""
 	@echo "To deactivate the environment, run:"
 	@echo "conda deactivate"
+
+# AWS LocalStack
+aws-init-localstack: ## Initialize LocalStack S3 with AWS resources
+	@echo "🟡 Waiting for LocalStack to be ready..."
+	@awslocal wait cloudformation-stack-create --stack-name "localstack-init" > /dev/null 2>&1 || true
+	@echo "🟢 LocalStack is ready. Initializing resources..."
+	@BUCKET_NAME=$$(grep S3_BUCKET_ARTIFACTS .env | cut -d '=' -f2); \
+	if awslocal s3 ls | grep -q "$$BUCKET_NAME"; then \
+		echo "Bucket '$$BUCKET_NAME' already exists."; \
+	else \
+		echo "Creating bucket '$$BUCKET_NAME'..."; \
+		awslocal s3 mb "s3://$$BUCKET_NAME"; \
+		echo "Bucket created."; \
+	fi
+	@echo "AWS resources initialized."
+
+aws-list-s3: ## List all LocalStack S3 buckets
+	@echo "Listing LocalStack S3 buckets..."
+	@awslocal s3 ls
+
+aws-delete-all-s3: ## Delete all LocalStack S3 buckets
+	@echo "Deleting all LocalStack S3 buckets..."
+	@for bucket in $$(awslocal s3 ls | awk '{print $$3}'); do \
+		echo "Deleting bucket $$bucket..."; \
+		awslocal s3 rb s3://$$bucket --force; \
+	done
+	@echo "All buckets deleted."
