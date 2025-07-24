@@ -27,7 +27,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class DatabaseSettings(BaseSettings):
     """Database configuration settings."""
 
-    model_config = SettingsConfigDict(env_prefix="DB_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="DB_", env_file=".env", case_sensitive=False
+    )
 
     host: str = Field(default="localhost", description="Database host")
     port: int = Field(default=5432, description="Database port")
@@ -65,7 +67,9 @@ class DatabaseSettings(BaseSettings):
 class MLflowSettings(BaseSettings):
     """MLflow configuration settings."""
 
-    model_config = SettingsConfigDict(env_prefix="MLFLOW_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="MLFLOW_", env_file=".env", case_sensitive=False
+    )
 
     tracking_uri: Optional[str] = Field(default=None, description="MLflow tracking URI")
     artifact_root: str = Field(
@@ -100,7 +104,9 @@ class MLflowSettings(BaseSettings):
 class AWSSettings(BaseSettings):
     """AWS/Localstack configuration settings."""
 
-    model_config = SettingsConfigDict(env_prefix="AWS_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="AWS_", env_file=".env", case_sensitive=False
+    )
 
     access_key_id: str = Field(default="test", description="AWS access key ID")
     secret_access_key: str = Field(default="test", description="AWS secret access key")
@@ -147,7 +153,9 @@ class AWSSettings(BaseSettings):
 class PrefectSettings(BaseSettings):
     """Prefect workflow orchestration settings."""
 
-    model_config = SettingsConfigDict(env_prefix="PREFECT_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="PREFECT_", env_file=".env", case_sensitive=False
+    )
 
     api_url: str = Field(
         default="http://localhost:4200/api", description="Prefect API URL"
@@ -163,7 +171,9 @@ class PrefectSettings(BaseSettings):
 class MonitoringSettings(BaseSettings):
     """Monitoring and drift detection settings."""
 
-    model_config = SettingsConfigDict(env_prefix="MONITORING_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="MONITORING_", env_file=".env", case_sensitive=False
+    )
 
     evidently_workspace: str = Field(
         default="./evidently_workspace", description="Evidently workspace path"
@@ -189,7 +199,9 @@ class MonitoringSettings(BaseSettings):
 class GrafanaSettings(BaseSettings):
     """Grafana dashboard configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="GRAFANA_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="GRAFANA_", env_file=".env", case_sensitive=False
+    )
 
     host: str = Field(default="localhost", description="Grafana host")
     port: int = Field(default=3000, description="Grafana port")
@@ -212,7 +224,9 @@ class GrafanaSettings(BaseSettings):
 class ModelSettings(BaseSettings):
     """Model training and registry configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="MODEL_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="MODEL_", env_file=".env", case_sensitive=False
+    )
 
     model_type: str = Field(default="random_forest", description="Model type")
     target_column: str = Field(default="AC_POWER", description="Target column name")
@@ -257,7 +271,9 @@ class ModelSettings(BaseSettings):
 class BatchSettings(BaseSettings):
     """Batch prediction configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="BATCH_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="BATCH_", env_file=".env", case_sensitive=False
+    )
 
     prediction_schedule: str = Field(
         default="0 23 * * *", description="Prediction cron schedule"
@@ -279,7 +295,9 @@ class BatchSettings(BaseSettings):
 class APISettings(BaseSettings):
     """API service configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="API_", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_prefix="API_", env_file=".env", case_sensitive=False
+    )
 
     host: str = Field(default="0.0.0.0", description="API host")
     port: int = Field(default=8000, description="API port")
@@ -302,7 +320,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=True,
+        case_sensitive=False,
         validate_assignment=True,
         extra="ignore",
     )
