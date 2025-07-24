@@ -52,10 +52,3 @@ evidently>=0.4.0
 # Linting Specific Plugins
 pylint-pytest>=1.1.0
 pylint-pydantic>=0.2.0
-
-# Pydantic
-pydantic-settings>=2.0.0
-
-# AWS & LocalStack
-awscli>=1.41.10
-awscli-local>=0.22.0
