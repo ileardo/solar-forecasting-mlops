@@ -3,6 +3,8 @@ disable = [
     "no-member",
     "logging-fstring-interpolation",
     "too-many-instance-attributes",
+    "too-many-arguments",
+    "too-many-positional-arguments",
 ]
 
 [tool.isort]
