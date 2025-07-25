@@ -7,7 +7,7 @@ awslocal wait cloudformation-stack-create --stack-name "localstack-init" > /dev/
 
 echo "🟢 LocalStack is ready. Initializing resources..."
 
-BUCKET_NAME=$(grep S3_BUCKET_ARTIFACTS .env | cut -d '=' -f2)
+BUCKET_NAME=${S3_BUCKET_ARTIFACTS:-mlflow-artifacts}
 
 if awslocal s3 ls | grep -q "${BUCKET_NAME}"; then
   echo "Bucket '${BUCKET_NAME}' already exists."
