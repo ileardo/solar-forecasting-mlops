@@ -9,12 +9,13 @@ Provides simple interface for common MLflow operations.
 - log metrics and parameters
 - register models
 - validate MLflow connection
-- cleanup test experiments
 """
 
 from src.config.settings import get_settings
 
 import logging
+import uuid
+from datetime import datetime
 from typing import (
     Any,
     Dict,
@@ -44,17 +45,17 @@ def setup_mlflow_tracking() -> None:
     settings = get_settings()
 
     # Set tracking URI
-    mlflow.set_tracking_uri(settings.mlflow.tracking_uri)
+    mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
 
     # Set S3 configuration for artifacts
     import os
 
-    os.environ["AWS_ACCESS_KEY_ID"] = settings.aws.access_key_id
-    os.environ["AWS_SECRET_ACCESS_KEY"] = settings.aws.secret_access_key
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = settings.mlflow.s3_endpoint_url or ""
+    os.environ["AWS_ACCESS_KEY_ID"] = settings.aws_access_key_id
+    os.environ["AWS_SECRET_ACCESS_KEY"] = settings.aws_secret_access_key
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = settings.mlflow_s3_endpoint_url or ""
 
-    logger.info(f"MLflow tracking URI set to: {settings.mlflow.tracking_uri}")
-    logger.info(f"MLflow S3 endpoint: {settings.mlflow.s3_endpoint_url}")
+    logger.info(f"MLflow tracking URI set to: {settings.mlflow_tracking_uri}")
+    logger.info(f"MLflow S3 endpoint: {settings.mlflow_s3_endpoint_url}")
 
 
 def get_mlflow_client() -> MlflowClient:
@@ -72,6 +73,8 @@ def get_or_create_experiment(experiment_name: str) -> str:
     """
     Get existing experiment or create new one.
 
+    Handles both active and deleted experiments gracefully.
+
     Args:
         experiment_name: Name of the experiment to get or create.
 
@@ -86,8 +89,14 @@ def get_or_create_experiment(experiment_name: str) -> str:
     try:
         experiment = client.get_experiment_by_name(experiment_name)
         if experiment is not None:
-            logger.info(f"Using existing experiment: {experiment_name}")
-            return experiment.experiment_id
+            if experiment.lifecycle_stage == "active":
+                logger.info(f"Using existing active experiment: {experiment_name}")
+                return experiment.experiment_id
+            elif experiment.lifecycle_stage == "deleted":
+                # Restore deleted experiment
+                client.restore_experiment(experiment.experiment_id)
+                logger.info(f"Restored deleted experiment: {experiment_name}")
+                return experiment.experiment_id
     except MlflowException:
         pass
 
@@ -203,6 +212,65 @@ def get_latest_model_version(
         return None
 
 
+def quick_test_mlflow() -> bool:
+    """
+    Quick test of MLflow connection and basic operations.
+
+    Creates a temporary experiment with unique name to avoid conflicts.
+
+    Returns:
+        bool: True if MLflow test successful.
+    """
+    try:
+        print("🧪 Testing MLflow setup...")
+
+        # Setup MLflow
+        setup_mlflow_tracking()
+
+        settings = get_settings()
+        print(f"   Tracking URI: {settings.mlflow_tracking_uri}")
+        print(f"   S3 Endpoint: {settings.mlflow_s3_endpoint_url}")
+
+        # Test experiment operations with unique name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = str(uuid.uuid4())[:8]
+        test_experiment_name = f"quick_test_{timestamp}_{unique_id}"
+
+        experiment_id = get_or_create_experiment(test_experiment_name)
+
+        # Test run operations
+        with mlflow.start_run(
+            experiment_id=experiment_id, run_name=f"quick_test_run_{unique_id}"
+        ):
+            mlflow.log_param("test_param", "connection_test")
+            mlflow.log_metric("test_metric", 0.99)
+
+            # Test artifact logging (simple text file)
+            artifact_content = (
+                f"Quick test artifact\nTimestamp: {timestamp}\nUnique ID: {unique_id}"
+            )
+            artifact_path = f"quick_test_{unique_id}.txt"
+
+            with open(artifact_path, "w") as f:
+                f.write(artifact_content)
+
+            mlflow.log_artifact(artifact_path)
+
+            # Clean up local file
+            import os
+
+            os.remove(artifact_path)
+
+        print("✅ MLflow test successful!")
+        return True
+
+    except Exception as e:
+        logger.error(f"MLflow validation failed: {str(e)}")
+        print(f"❌ MLflow test failed:")
+        print(f"   {str(e)}")
+        return False
+
+
 def validate_mlflow_connection() -> Tuple[bool, Dict[str, Any]]:
     """
     Validate MLflow server connection and configuration.
@@ -230,9 +298,12 @@ def validate_mlflow_connection() -> Tuple[bool, Dict[str, Any]]:
             f"MLflow connection successful. Found {len(experiments)} experiments."
         )
 
-        # Test S3 artifacts by creating a test run
-        settings = get_settings()
-        test_experiment = get_or_create_experiment("connection-test")
+        # Test S3 artifacts by creating a test run with unique name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = str(uuid.uuid4())[:8]
+        test_experiment = get_or_create_experiment(
+            f"connection_test_{timestamp}_{unique_id}"
+        )
 
         with mlflow.start_run(experiment_id=test_experiment):
             mlflow.log_param("test_param", "connection_test")
@@ -256,18 +327,54 @@ def validate_mlflow_connection() -> Tuple[bool, Dict[str, Any]]:
     return overall_success, results
 
 
-def cleanup_test_experiments() -> None:
+def create_unique_experiment_name(base_name: str) -> str:
     """
-    Clean up test experiments created during validation.
+    Create unique experiment name to avoid conflicts.
 
-    Removes experiments created for testing purposes.
+    Args:
+        base_name: Base name for the experiment.
+
+    Returns:
+        str: Unique experiment name with timestamp and UUID.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:8]
+    return f"{base_name}_{timestamp}_{unique_id}"
+
+
+def get_experiment_by_name_safe(experiment_name: str) -> Optional[str]:
+    """
+    Safely get experiment by name, handling deleted experiments.
+
+    Args:
+        experiment_name: Name of the experiment.
+
+    Returns:
+        Optional[str]: Experiment ID if found and active, None otherwise.
     """
     client = get_mlflow_client()
 
     try:
-        test_experiment = client.get_experiment_by_name("connection-test")
-        if test_experiment:
-            client.delete_experiment(test_experiment.experiment_id)
-            logger.info("Cleaned up test experiment")
+        experiment = client.get_experiment_by_name(experiment_name)
+        if experiment and experiment.lifecycle_stage == "active":
+            return experiment.experiment_id
+        return None
     except MlflowException:
-        pass  # Experiment doesn't exist, nothing to clean
+        return None
+
+
+# Export commonly used functions
+__all__ = [
+    "setup_mlflow_tracking",
+    "get_mlflow_client",
+    "get_or_create_experiment",
+    "start_mlflow_run",
+    "log_model_metrics",
+    "log_model_params",
+    "register_model",
+    "get_latest_model_version",
+    "quick_test_mlflow",
+    "validate_mlflow_connection",
+    "create_unique_experiment_name",
+    "get_experiment_by_name_safe",
+]

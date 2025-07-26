@@ -1,20 +1,35 @@
 #!/bin/bash
-
 set -e
 
-echo "🟡 Waiting for LocalStack to be ready..."
-awslocal wait cloudformation-stack-create --stack-name "localstack-init" > /dev/null 2>&1 || true
+echo "🟡 Initializing LocalStack S3 resources..."
 
-echo "🟢 LocalStack is ready. Initializing resources..."
+# Wait for LocalStack to be ready
+echo "Waiting for LocalStack to start..."
+for i in {1..30}; do
+    if curl -s http://localhost:4566/_localstack/health >/dev/null 2>&1; then
+        echo "✅ LocalStack is ready!"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "❌ LocalStack failed to start within 30 seconds"
+        exit 1
+    fi
+    sleep 1
+done
 
+# Create S3 bucket for MLflow artifacts
 BUCKET_NAME=${S3_BUCKET_ARTIFACTS:-mlflow-artifacts}
+echo "Creating S3 bucket: $BUCKET_NAME"
 
-if awslocal s3 ls | grep -q "${BUCKET_NAME}"; then
-  echo "Bucket '${BUCKET_NAME}' already exists."
+if awslocal s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+    echo "✅ Bucket '$BUCKET_NAME' already exists"
 else
-  echo "Creating bucket '${BUCKET_NAME}'..."
-  awslocal s3 mb "s3://${BUCKET_NAME}"
-  echo "Bucket created."
+    awslocal s3 mb "s3://$BUCKET_NAME"
+    echo "✅ Bucket '$BUCKET_NAME' created successfully"
 fi
 
-echo "✅ AWS resources initialized."
+# List all buckets for verification
+echo "📋 Current S3 buckets:"
+awslocal s3 ls
+
+echo "🎉 LocalStack initialization complete!"
