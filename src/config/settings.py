@@ -42,9 +42,9 @@ class Settings:
         self.s3_bucket_artifacts = os.getenv("S3_BUCKET_ARTIFACTS", "mlflow-artifacts")
 
         # MLflow configuration (derived from database)
+        self.mlflow_port = int(os.getenv("MLFLOW_PORT", "5000"))
         self.mlflow_tracking_uri = os.getenv(
-            "MLFLOW_TRACKING_URI",
-            f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}",
+            "MLFLOW_TRACKING_URI", f"http://localhost:{self.mlflow_port}"
         )
         self.mlflow_s3_endpoint_url = os.getenv(
             "MLFLOW_S3_ENDPOINT_URL", self.aws_endpoint_url
