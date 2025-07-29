@@ -267,17 +267,27 @@ class ModelRegistry:
 
             run_id = model_version_info.run_id
 
-            # Download preprocessor artifact
-            artifact_path = self.client.download_artifacts(run_id, "preprocessor")
-            preprocessor_file = Path(artifact_path) / "preprocessor_production.pkl"
+            # Load preprocessor from local artifacts directory
+            try:
+                # Build path to local preprocessor file
+                project_root = Path(
+                    __file__
+                ).parent.parent.parent  # Go up from src/model/ to project root
+                artifacts_dir = project_root / "artifacts"
+                preprocessor_file = artifacts_dir / f"preprocessor_{run_id}.pkl"
 
-            if not preprocessor_file.exists():
-                # Try alternative naming
-                preprocessor_files = list(Path(artifact_path).glob("*.pkl"))
-                if preprocessor_files:
-                    preprocessor_file = preprocessor_files[0]
-                else:
-                    raise RuntimeError("Preprocessor artifact not found")
+                logger.info(f"Looking for preprocessor at: {preprocessor_file}")
+
+                if not preprocessor_file.exists():
+                    raise RuntimeError(
+                        f"Preprocessor file not found: {preprocessor_file}"
+                    )
+
+                logger.info(f"Found preprocessor file: {preprocessor_file.name}")
+
+            except Exception as e:
+                logger.error(f"Failed to locate preprocessor file: {str(e)}")
+                raise RuntimeError(f"Preprocessor file not found: {str(e)}") from e
 
             # Load the preprocessor
             logger.info(f"Loading preprocessor from: {preprocessor_file}")
