@@ -6,6 +6,7 @@ forecasting batch predictions with task scheduling and monitoring.
 """
 
 from src.batch.predictor import BatchPredictor
+from src.batch.storage import PredictionStorage
 
 import logging
 from datetime import datetime, timedelta
@@ -110,6 +111,35 @@ def validate_results_task(results: Dict[str, Any]) -> Dict[str, Any]:
         raise
 
 
+@task(retries=1)
+def save_predictions_task(results: Dict[str, Any]) -> int:
+    """
+    Save prediction results to PostgreSQL database.
+
+    Args:
+        results: Validated prediction results to save.
+
+    Returns:
+        int: ID of the saved prediction record.
+
+    Raises:
+        RuntimeError: When save operation fails.
+    """
+    task_logger = get_run_logger()
+    task_logger.info(f"Saving prediction for {results['prediction_date']} to database")
+
+    try:
+        storage = PredictionStorage()
+        prediction_id = storage.save_prediction(results)
+
+        task_logger.info(f"Prediction saved successfully with ID: {prediction_id}")
+        return prediction_id
+
+    except Exception as e:
+        task_logger.error(f"Failed to save prediction: {str(e)}")
+        raise
+
+
 @task
 def log_results_task(results: Dict[str, Any]) -> None:
     """
@@ -190,10 +220,17 @@ def solar_batch_prediction_flow(
         # Task 2: Validate results
         validated_results = validate_results_task(prediction_results)
 
-        # Task 3: Log summary
+        # Task 3: Save to database
+        prediction_id = save_predictions_task(validated_results)
+
+        # Task 4: Log summary
         log_results_task(validated_results)
 
+        # Add database info to results
+        validated_results["database_id"] = prediction_id
+
         flow_logger.info(f"Solar batch prediction flow completed successfully")
+        flow_logger.info(f"Prediction saved to database with ID: {prediction_id}")
         return validated_results
 
     except Exception as e:
@@ -261,5 +298,6 @@ __all__ = [
     "daily_solar_prediction_flow",
     "run_prediction_task",
     "validate_results_task",
+    "save_predictions_task",
     "log_results_task",
 ]

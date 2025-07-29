@@ -5,6 +5,8 @@ This module provides database storage functionality for saving and retrieving
 batch prediction results for monitoring and analysis.
 """
 
+from src.config.settings import get_settings
+
 import json
 import logging
 from datetime import datetime, timedelta
@@ -17,8 +19,6 @@ from typing import (
 import pandas as pd
 import psycopg2
 from psycopg2.extras import RealDictCursor
-
-from src.config.settings import get_settings
 
 
 # Configure logging
@@ -62,7 +62,7 @@ class PredictionStorage:
                 port=self.settings.db_port,
                 database=self.settings.db_name,
                 user=self.settings.db_user,
-                password=self.settings.db_password
+                password=self.settings.db_password,
             )
             return conn
         except Exception as e:
@@ -147,17 +147,20 @@ class PredictionStorage:
         try:
             with self._get_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(insert_sql, (
-                        results["prediction_date"],
-                        results["model_name"],
-                        json.dumps(results["forecast_24h"]),  # Store as JSON
-                        results["peak_power"],
-                        results["peak_hour"],
-                        results["total_energy"],
-                        results["daylight_energy"],
-                        results["features_count"],
-                        results["prediction_timestamp"]
-                    ))
+                    cursor.execute(
+                        insert_sql,
+                        (
+                            results["prediction_date"],
+                            results["model_name"],
+                            json.dumps(results["forecast_24h"]),  # Store as JSON
+                            results["peak_power"],
+                            results["peak_hour"],
+                            results["total_energy"],
+                            results["daylight_energy"],
+                            results["features_count"],
+                            results["prediction_timestamp"],
+                        ),
+                    )
 
                     prediction_id = cursor.fetchone()[0]
                     conn.commit()
@@ -166,16 +169,16 @@ class PredictionStorage:
             return prediction_id
 
         except psycopg2.IntegrityError:
-            logger.warning(f"Prediction for {results['prediction_date']} already exists")
+            logger.warning(
+                f"Prediction for {results['prediction_date']} already exists"
+            )
             raise RuntimeError("Duplicate prediction - already exists in database")
         except Exception as e:
             logger.error(f"Failed to save prediction: {str(e)}")
             raise RuntimeError(f"Save operation failed: {str(e)}") from e
 
     def get_recent_predictions(
-        self,
-        days: int = 7,
-        model_name: Optional[str] = None
+        self, days: int = 7, model_name: Optional[str] = None
     ) -> pd.DataFrame:
         """
         Retrieve recent predictions from database.
@@ -220,7 +223,7 @@ class PredictionStorage:
             if rows:
                 df = pd.DataFrame([dict(row) for row in rows])
                 # Parse JSON forecast data back to lists
-                df['forecast_24h'] = df['forecast_24h'].apply(json.loads)
+                df["forecast_24h"] = df["forecast_24h"].apply(json.loads)
                 logger.info(f"Retrieved {len(df)} predictions")
                 return df
             else:
@@ -266,10 +269,14 @@ class PredictionStorage:
         try:
             with self._get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                    cursor.execute(stats_sql, [datetime.now().date() - timedelta(days=days)])
+                    cursor.execute(
+                        stats_sql, [datetime.now().date() - timedelta(days=days)]
+                    )
                     stats = dict(cursor.fetchone())
 
-            logger.info(f"Statistics calculated for {stats['total_predictions']} predictions")
+            logger.info(
+                f"Statistics calculated for {stats['total_predictions']} predictions"
+            )
             return stats
 
         except Exception as e:
@@ -300,7 +307,9 @@ class PredictionStorage:
         try:
             with self._get_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(delete_sql, [datetime.now().date() - timedelta(days=days)])
+                    cursor.execute(
+                        delete_sql, [datetime.now().date() - timedelta(days=days)]
+                    )
                     deleted_count = cursor.rowcount
                     conn.commit()
 
@@ -333,7 +342,7 @@ class PredictionStorage:
                 "total_predictions": total_predictions,
                 "last_check": datetime.now().isoformat(),
                 "database_host": self.settings.db_host,
-                "database_name": self.settings.db_name
+                "database_name": self.settings.db_name,
             }
 
         except Exception as e:
@@ -341,7 +350,7 @@ class PredictionStorage:
             return {
                 "healthy": False,
                 "error": str(e),
-                "last_check": datetime.now().isoformat()
+                "last_check": datetime.now().isoformat(),
             }
 
 
@@ -365,11 +374,17 @@ def main() -> None:
         print(f"Found {len(recent)} predictions in last 30 days")
 
         if len(recent) > 0:
-            print(f"Latest: {recent.iloc[0]['prediction_date']} - {recent.iloc[0]['peak_power']:.1f} kW")
+            print(
+                f"Latest: {recent.iloc[0]['prediction_date']} - {recent.iloc[0]['peak_power']:.1f} kW"
+            )
 
         print("\nStatistics:")
         stats = storage.get_prediction_stats(days=30)
-        print(f"Average peak power: {stats['avg_peak_power']:.1f} kW" if stats['avg_peak_power'] else "No data")
+        print(
+            f"Average peak power: {stats['avg_peak_power']:.1f} kW"
+            if stats["avg_peak_power"]
+            else "No data"
+        )
 
     else:
         print(f"Storage unhealthy: {health['error']}")
