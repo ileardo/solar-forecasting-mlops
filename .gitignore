@@ -165,7 +165,6 @@ models/
 *.pb
 
 # Data files (raw data should not be versioned)
-data/raw/*.csv
 data/raw/*.parquet
 data/raw/*.json
 data/raw/*.xlsx
