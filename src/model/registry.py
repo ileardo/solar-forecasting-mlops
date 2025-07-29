@@ -6,19 +6,24 @@ model registration, stage transitions, metadata management, and
 model/preprocessor package handling for production deployment.
 """
 
+from src.data.preprocessor import SolarForecastingPreprocessor
+from src.utils.mlflow_utils import get_mlflow_client, setup_mlflow_tracking
+
 import logging
 import tempfile
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Tuple
+)
 
 import mlflow
-from mlflow import MlflowClient
 from mlflow.exceptions import MlflowException
 from sklearn.multioutput import MultiOutputRegressor
-
-from src.data.preprocessor import SolarForecastingPreprocessor
-from src.utils.mlflow_utils import setup_mlflow_tracking, get_mlflow_client
 
 
 # Configure logging
@@ -67,7 +72,7 @@ class ModelRegistry:
         model_name: str,
         description: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
     ) -> str:
         """
         Register a complete model package (model + preprocessor) in MLflow registry.
@@ -102,7 +107,9 @@ class ModelRegistry:
                 current_run = mlflow.active_run()
                 if current_run is None:
                     # Create a new run for model registration
-                    logger.info("No active run found, creating new run for model registration")
+                    logger.info(
+                        "No active run found, creating new run for model registration"
+                    )
                     registration_run = mlflow.start_run(
                         run_name=f"model_registration_{model_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                     )
@@ -114,7 +121,7 @@ class ModelRegistry:
             try:
                 self.client.create_registered_model(
                     name=model_name,
-                    description=f"Solar forecasting model package created on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    description=f"Solar forecasting model package created on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                 )
                 logger.info(f"Created new registered model: {model_name}")
             except MlflowException as e:
@@ -124,39 +131,39 @@ class ModelRegistry:
                     raise
 
             # Save preprocessor to temporary file for artifact logging
-            with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
+            with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
                 preprocessor.save_preprocessor(f.name)
                 preprocessor_path = f.name
 
             # Log preprocessor and model in the appropriate run context
-            if mlflow.active_run() is not None and mlflow.active_run().info.run_id == run_id:
+            if (
+                mlflow.active_run() is not None
+                and mlflow.active_run().info.run_id == run_id
+            ):
                 # We're already in the correct run context
                 mlflow.log_artifact(preprocessor_path, artifact_path="preprocessor")
                 model_info = mlflow.sklearn.log_model(
-                    model,
-                    "model",
-                    registered_model_name=model_name
+                    model, "model", registered_model_name=model_name
                 )
             else:
                 # Need to start/resume the run
                 with mlflow.start_run(run_id=run_id):
                     mlflow.log_artifact(preprocessor_path, artifact_path="preprocessor")
                     model_info = mlflow.sklearn.log_model(
-                        model,
-                        "model",
-                        registered_model_name=model_name
+                        model, "model", registered_model_name=model_name
                     )
 
             # Get the created model version
             model_version = model_info.registered_model_version
 
             # Add version-specific metadata
-            version_description = description or f"Solar forecasting model v{model_version} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            version_description = (
+                description
+                or f"Solar forecasting model v{model_version} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            )
 
             self.client.update_model_version(
-                name=model_name,
-                version=model_version,
-                description=version_description
+                name=model_name, version=model_version, description=version_description
             )
 
             # Add tags if provided
@@ -165,7 +172,7 @@ class ModelRegistry:
                 "forecast_horizon": str(preprocessor.forecast_horizon),
                 "features_count": str(len(preprocessor.get_feature_names())),
                 "created_date": datetime.now().strftime("%Y-%m-%d"),
-                "mlops_stage": "development"
+                "mlops_stage": "development",
             }
 
             if tags:
@@ -173,13 +180,12 @@ class ModelRegistry:
 
             for key, value in default_tags.items():
                 self.client.set_model_version_tag(
-                    name=model_name,
-                    version=model_version,
-                    key=key,
-                    value=value
+                    name=model_name, version=model_version, key=key, value=value
                 )
 
-            logger.info(f"Successfully registered model package {model_name} version {model_version}")
+            logger.info(
+                f"Successfully registered model package {model_name} version {model_version}"
+            )
             logger.info(f"Model URI: models:/{model_name}/{model_version}")
 
             return model_version
@@ -192,7 +198,7 @@ class ModelRegistry:
         self,
         model_name: str,
         version: Optional[str] = None,
-        stage: Optional[str] = None
+        stage: Optional[str] = None,
     ) -> Tuple[MultiOutputRegressor, SolarForecastingPreprocessor]:
         """
         Load a complete model package (model + preprocessor) from the registry.
@@ -234,7 +240,9 @@ class ModelRegistry:
                 logger.info(f"Loading from stage: {stage}")
             else:
                 # Default to latest version
-                latest_versions = self.client.get_latest_versions(model_name, stages=["None"])
+                latest_versions = self.client.get_latest_versions(
+                    model_name, stages=["None"]
+                )
                 if not latest_versions:
                     raise RuntimeError(f"No versions found for model {model_name}")
                 version = latest_versions[0].version
@@ -250,7 +258,9 @@ class ModelRegistry:
                 model_version_info = self.client.get_model_version(model_name, version)
             else:
                 # For stage-based loading, get the version info
-                latest_versions = self.client.get_latest_versions(model_name, stages=[stage])
+                latest_versions = self.client.get_latest_versions(
+                    model_name, stages=[stage]
+                )
                 if not latest_versions:
                     raise RuntimeError(f"No model found in stage {stage}")
                 model_version_info = latest_versions[0]
@@ -271,11 +281,15 @@ class ModelRegistry:
 
             # Load the preprocessor
             logger.info(f"Loading preprocessor from: {preprocessor_file}")
-            preprocessor = SolarForecastingPreprocessor.load_preprocessor(str(preprocessor_file))
+            preprocessor = SolarForecastingPreprocessor.load_preprocessor(
+                str(preprocessor_file)
+            )
 
             logger.info(f"Successfully loaded model package {model_name}")
             logger.info(f"Model type: {type(model).__name__}")
-            logger.info(f"Preprocessor features: {len(preprocessor.get_feature_names())}")
+            logger.info(
+                f"Preprocessor features: {len(preprocessor.get_feature_names())}"
+            )
 
             return model, preprocessor
 
@@ -288,7 +302,7 @@ class ModelRegistry:
         model_name: str,
         version: str,
         stage: str,
-        archive_existing_versions: bool = True
+        archive_existing_versions: bool = True,
     ) -> None:
         """
         Transition a model version to a specific stage.
@@ -312,35 +326,34 @@ class ModelRegistry:
         try:
             # Archive existing versions in target stage if requested
             if archive_existing_versions and stage in ["Staging", "Production"]:
-                existing_versions = self.client.get_latest_versions(model_name, stages=[stage])
+                existing_versions = self.client.get_latest_versions(
+                    model_name, stages=[stage]
+                )
                 for existing_version in existing_versions:
-                    logger.info(f"Archiving existing version {existing_version.version} from {stage}")
+                    logger.info(
+                        f"Archiving existing version {existing_version.version} from {stage}"
+                    )
                     self.client.transition_model_version_stage(
                         name=model_name,
                         version=existing_version.version,
-                        stage="Archived"
+                        stage="Archived",
                     )
 
             # Transition the new version
             self.client.transition_model_version_stage(
-                name=model_name,
-                version=version,
-                stage=stage
+                name=model_name, version=version, stage=stage
             )
 
             # Update stage-related tags
             self.client.set_model_version_tag(
-                name=model_name,
-                version=version,
-                key="mlops_stage",
-                value=stage.lower()
+                name=model_name, version=version, key="mlops_stage", value=stage.lower()
             )
 
             self.client.set_model_version_tag(
                 name=model_name,
                 version=version,
                 key="promoted_date",
-                value=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             )
 
             logger.info(f"Successfully transitioned model to {stage}")
@@ -421,39 +434,45 @@ class ModelRegistry:
             for version in versions:
                 tags = {tag.key: tag.value for tag in version.tags}
 
-                version_info.append({
-                    'version': version.version,
-                    'stage': version.current_stage,
-                    'creation_timestamp': version.creation_timestamp,
-                    'last_updated_timestamp': version.last_updated_timestamp,
-                    'run_id': version.run_id,
-                    'description': version.description,
-                    'tags': tags,
-                    'status': version.status
-                })
+                version_info.append(
+                    {
+                        "version": version.version,
+                        "stage": version.current_stage,
+                        "creation_timestamp": version.creation_timestamp,
+                        "last_updated_timestamp": version.last_updated_timestamp,
+                        "run_id": version.run_id,
+                        "description": version.description,
+                        "tags": tags,
+                        "status": version.status,
+                    }
+                )
 
             # Sort versions by version number
-            version_info.sort(key=lambda x: int(x['version']), reverse=True)
+            version_info.sort(key=lambda x: int(x["version"]), reverse=True)
 
             # Get current stage versions
             current_stages = {}
             for stage in ["Production", "Staging", "None", "Archived"]:
-                stage_versions = self.client.get_latest_versions(model_name, stages=[stage])
+                stage_versions = self.client.get_latest_versions(
+                    model_name, stages=[stage]
+                )
                 if stage_versions:
                     current_stages[stage] = stage_versions[0].version
 
             model_info = {
-                'name': registered_model.name,
-                'description': registered_model.description,
-                'creation_timestamp': registered_model.creation_timestamp,
-                'last_updated_timestamp': registered_model.last_updated_timestamp,
-                'total_versions': len(version_info),
-                'current_stages': current_stages,
-                'versions': version_info,
-                'latest_version': version_info[0]['version'] if version_info else None
+                "name": registered_model.name,
+                "description": registered_model.description,
+                "creation_timestamp": registered_model.creation_timestamp,
+                "last_updated_timestamp": registered_model.last_updated_timestamp,
+                "total_versions": len(version_info),
+                "current_stages": current_stages,
+                "versions": version_info,
+                "latest_version": version_info[0]["version"] if version_info else None,
             }
 
-            logger.info(f"Retrieved info for model {model_name}: {len(version_info)} versions")
+            logger.info(
+                f"Retrieved info for model {model_name}: {len(version_info)} versions"
+            )
             return model_info
 
         except Exception as e:
@@ -477,7 +496,9 @@ class ModelRegistry:
                 # Get latest versions for each stage
                 current_stages = {}
                 for stage in ["Production", "Staging", "None", "Archived"]:
-                    stage_versions = self.client.get_latest_versions(model.name, stages=[stage])
+                    stage_versions = self.client.get_latest_versions(
+                        model.name, stages=[stage]
+                    )
                     if stage_versions:
                         current_stages[stage] = stage_versions[0].version
 
@@ -485,12 +506,12 @@ class ModelRegistry:
                 versions = self.client.search_model_versions(f"name='{model.name}'")
 
                 model_summary = {
-                    'name': model.name,
-                    'description': model.description,
-                    'creation_timestamp': model.creation_timestamp,
-                    'last_updated_timestamp': model.last_updated_timestamp,
-                    'total_versions': len(versions),
-                    'current_stages': current_stages
+                    "name": model.name,
+                    "description": model.description,
+                    "creation_timestamp": model.creation_timestamp,
+                    "last_updated_timestamp": model.last_updated_timestamp,
+                    "total_versions": len(versions),
+                    "current_stages": current_stages,
                 }
 
                 model_list.append(model_summary)
@@ -524,9 +545,7 @@ class ModelRegistry:
             raise RuntimeError(f"Model version deletion failed: {str(e)}") from e
 
     def archive_old_versions(
-        self,
-        model_name: str,
-        keep_latest_n: int = 5
+        self, model_name: str, keep_latest_n: int = 5
     ) -> List[str]:
         """
         Archive old model versions, keeping only the latest N versions.
@@ -538,7 +557,9 @@ class ModelRegistry:
         Returns:
             List[str]: List of archived version numbers.
         """
-        logger.info(f"Archiving old versions for {model_name}, keeping latest {keep_latest_n}")
+        logger.info(
+            f"Archiving old versions for {model_name}, keeping latest {keep_latest_n}"
+        )
 
         try:
             # Get all versions sorted by version number
@@ -551,9 +572,7 @@ class ModelRegistry:
             for version in versions[keep_latest_n:]:
                 if version.current_stage not in ["Production", "Staging", "Archived"]:
                     self.client.transition_model_version_stage(
-                        name=model_name,
-                        version=version.version,
-                        stage="Archived"
+                        name=model_name, version=version.version, stage="Archived"
                     )
                     archived_versions.append(version.version)
                     logger.info(f"Archived version {version.version}")

@@ -5,15 +5,24 @@ This module provides comprehensive evaluation capabilities for multi-step
 forecasting models with focus on numerical metrics and performance analysis.
 """
 
+from src.data.preprocessor import SolarForecastingPreprocessor
+
 import logging
-from typing import Dict, List, Tuple, Any, Optional
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+)
 
 import numpy as np
 import pandas as pd
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score
+)
 from sklearn.multioutput import MultiOutputRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-
-from src.data.preprocessor import SolarForecastingPreprocessor
 
 
 # Configure logging
@@ -47,9 +56,7 @@ class ModelEvaluator:
         logger.info("ModelEvaluator initialized")
 
     def calculate_overall_metrics(
-        self,
-        y_true: np.ndarray,
-        y_pred: np.ndarray
+        self, y_true: np.ndarray, y_pred: np.ndarray
     ) -> Dict[str, float]:
         """
         Calculate overall performance metrics across all forecast horizons.
@@ -91,27 +98,27 @@ class ModelEvaluator:
         within_30pct = np.mean(error_pct <= 30) * 100
 
         overall_metrics = {
-            'rmse': float(rmse),
-            'mae': float(mae),
-            'r2': float(r2),
-            'mape': float(mape),
-            'residual_mean': float(residual_mean),
-            'residual_std': float(residual_std),
-            'predictions_within_10pct': float(within_10pct),
-            'predictions_within_20pct': float(within_20pct),
-            'predictions_within_30pct': float(within_30pct),
-            'total_samples': int(len(y_true_flat)),
-            'forecast_horizons': int(y_true.shape[1])
+            "rmse": float(rmse),
+            "mae": float(mae),
+            "r2": float(r2),
+            "mape": float(mape),
+            "residual_mean": float(residual_mean),
+            "residual_std": float(residual_std),
+            "predictions_within_10pct": float(within_10pct),
+            "predictions_within_20pct": float(within_20pct),
+            "predictions_within_30pct": float(within_30pct),
+            "total_samples": int(len(y_true_flat)),
+            "forecast_horizons": int(y_true.shape[1]),
         }
 
-        logger.info(f"Overall metrics calculated: RMSE={rmse:.2f}, MAE={mae:.2f}, R²={r2:.3f}")
+        logger.info(
+            f"Overall metrics calculated: RMSE={rmse:.2f}, MAE={mae:.2f}, R²={r2:.3f}"
+        )
 
         return overall_metrics
 
     def calculate_per_horizon_metrics(
-        self,
-        y_true: np.ndarray,
-        y_pred: np.ndarray
+        self, y_true: np.ndarray, y_pred: np.ndarray
     ) -> List[Dict[str, float]]:
         """
         Calculate performance metrics for each individual forecast horizon.
@@ -161,30 +168,33 @@ class ModelEvaluator:
             pred_mean_h = np.mean(y_pred_h)
             pred_std_h = np.std(y_pred_h)
 
-            horizon_metrics.append({
-                'horizon': h + 1,  # 1-indexed for interpretability
-                'rmse': float(rmse_h),
-                'mae': float(mae_h),
-                'r2': float(r2_h),
-                'mape': float(mape_h),
-                'residual_mean': float(residual_mean_h),
-                'residual_std': float(residual_std_h),
-                'predictions_within_10pct': float(within_10pct_h),
-                'predictions_within_20pct': float(within_20pct_h),
-                'true_mean': float(true_mean_h),
-                'true_std': float(true_std_h),
-                'pred_mean': float(pred_mean_h),
-                'pred_std': float(pred_std_h),
-                'samples': int(len(y_true_h))
-            })
+            horizon_metrics.append(
+                {
+                    "horizon": h + 1,  # 1-indexed for interpretability
+                    "rmse": float(rmse_h),
+                    "mae": float(mae_h),
+                    "r2": float(r2_h),
+                    "mape": float(mape_h),
+                    "residual_mean": float(residual_mean_h),
+                    "residual_std": float(residual_std_h),
+                    "predictions_within_10pct": float(within_10pct_h),
+                    "predictions_within_20pct": float(within_20pct_h),
+                    "true_mean": float(true_mean_h),
+                    "true_std": float(true_std_h),
+                    "pred_mean": float(pred_mean_h),
+                    "pred_std": float(pred_std_h),
+                    "samples": int(len(y_true_h)),
+                }
+            )
 
-        logger.info(f"Per-horizon metrics calculated for {len(horizon_metrics)} horizons")
+        logger.info(
+            f"Per-horizon metrics calculated for {len(horizon_metrics)} horizons"
+        )
 
         return horizon_metrics
 
     def calculate_horizon_statistics(
-        self,
-        per_horizon_metrics: List[Dict[str, float]]
+        self, per_horizon_metrics: List[Dict[str, float]]
     ) -> Dict[str, float]:
         """
         Calculate statistical summary across all forecast horizons.
@@ -198,50 +208,48 @@ class ModelEvaluator:
         logger.info("Calculating horizon statistics...")
 
         # Extract metrics across horizons
-        rmse_values = [m['rmse'] for m in per_horizon_metrics]
-        mae_values = [m['mae'] for m in per_horizon_metrics]
-        r2_values = [m['r2'] for m in per_horizon_metrics]
-        mape_values = [m['mape'] for m in per_horizon_metrics]
+        rmse_values = [m["rmse"] for m in per_horizon_metrics]
+        mae_values = [m["mae"] for m in per_horizon_metrics]
+        r2_values = [m["r2"] for m in per_horizon_metrics]
+        mape_values = [m["mape"] for m in per_horizon_metrics]
 
         horizon_stats = {
             # RMSE statistics
-            'rmse_mean': float(np.mean(rmse_values)),
-            'rmse_std': float(np.std(rmse_values)),
-            'rmse_min': float(np.min(rmse_values)),
-            'rmse_max': float(np.max(rmse_values)),
-            'rmse_median': float(np.median(rmse_values)),
-
+            "rmse_mean": float(np.mean(rmse_values)),
+            "rmse_std": float(np.std(rmse_values)),
+            "rmse_min": float(np.min(rmse_values)),
+            "rmse_max": float(np.max(rmse_values)),
+            "rmse_median": float(np.median(rmse_values)),
             # MAE statistics
-            'mae_mean': float(np.mean(mae_values)),
-            'mae_std': float(np.std(mae_values)),
-            'mae_min': float(np.min(mae_values)),
-            'mae_max': float(np.max(mae_values)),
-            'mae_median': float(np.median(mae_values)),
-
+            "mae_mean": float(np.mean(mae_values)),
+            "mae_std": float(np.std(mae_values)),
+            "mae_min": float(np.min(mae_values)),
+            "mae_max": float(np.max(mae_values)),
+            "mae_median": float(np.median(mae_values)),
             # R² statistics
-            'r2_mean': float(np.mean(r2_values)),
-            'r2_std': float(np.std(r2_values)),
-            'r2_min': float(np.min(r2_values)),
-            'r2_max': float(np.max(r2_values)),
-            'r2_median': float(np.median(r2_values)),
-
+            "r2_mean": float(np.mean(r2_values)),
+            "r2_std": float(np.std(r2_values)),
+            "r2_min": float(np.min(r2_values)),
+            "r2_max": float(np.max(r2_values)),
+            "r2_median": float(np.median(r2_values)),
             # MAPE statistics
-            'mape_mean': float(np.mean(mape_values)),
-            'mape_std': float(np.std(mape_values)),
-            'mape_min': float(np.min(mape_values)),
-            'mape_max': float(np.max(mape_values)),
-            'mape_median': float(np.median(mape_values)),
-
+            "mape_mean": float(np.mean(mape_values)),
+            "mape_std": float(np.std(mape_values)),
+            "mape_min": float(np.min(mape_values)),
+            "mape_max": float(np.max(mape_values)),
+            "mape_median": float(np.median(mape_values)),
             # Horizon analysis
-            'best_horizon_rmse': int(np.argmin(rmse_values) + 1),
-            'worst_horizon_rmse': int(np.argmax(rmse_values) + 1),
-            'best_horizon_mae': int(np.argmin(mae_values) + 1),
-            'worst_horizon_mae': int(np.argmax(mae_values) + 1),
-            'best_horizon_r2': int(np.argmax(r2_values) + 1),
-            'worst_horizon_r2': int(np.argmin(r2_values) + 1)
+            "best_horizon_rmse": int(np.argmin(rmse_values) + 1),
+            "worst_horizon_rmse": int(np.argmax(rmse_values) + 1),
+            "best_horizon_mae": int(np.argmin(mae_values) + 1),
+            "worst_horizon_mae": int(np.argmax(mae_values) + 1),
+            "best_horizon_r2": int(np.argmax(r2_values) + 1),
+            "worst_horizon_r2": int(np.argmin(r2_values) + 1),
         }
 
-        logger.info(f"Horizon statistics calculated: RMSE range [{horizon_stats['rmse_min']:.2f}, {horizon_stats['rmse_max']:.2f}]")
+        logger.info(
+            f"Horizon statistics calculated: RMSE range [{horizon_stats['rmse_min']:.2f}, {horizon_stats['rmse_max']:.2f}]"
+        )
 
         return horizon_stats
 
@@ -250,7 +258,7 @@ class ModelEvaluator:
         model: MultiOutputRegressor,
         X_test: pd.DataFrame,
         y_test: pd.DataFrame,
-        preprocessor: Optional[SolarForecastingPreprocessor] = None
+        preprocessor: Optional[SolarForecastingPreprocessor] = None,
     ) -> Dict[str, Any]:
         """
         Complete model evaluation with overall and per-horizon analysis.
@@ -273,8 +281,8 @@ class ModelEvaluator:
         logger.info(f"Starting complete model evaluation on {len(X_test)} samples...")
 
         # Prepare features for prediction
-        if 'DATE_TIME' in X_test.columns:
-            X_features = X_test.drop('DATE_TIME', axis=1)
+        if "DATE_TIME" in X_test.columns:
+            X_features = X_test.drop("DATE_TIME", axis=1)
         else:
             X_features = X_test
 
@@ -292,38 +300,44 @@ class ModelEvaluator:
         key_horizons = {}
         for hour in [1, 6, 12, 24]:
             if hour <= len(per_horizon_metrics):
-                key_horizons[f'{hour}h'] = per_horizon_metrics[hour - 1]
+                key_horizons[f"{hour}h"] = per_horizon_metrics[hour - 1]
 
         # Compile complete evaluation results
         evaluation_results = {
-            'overall': overall_metrics,
-            'per_horizon': per_horizon_metrics,
-            'horizon_statistics': horizon_statistics,
-            'key_horizons': key_horizons,
-            'evaluation_metadata': {
-                'test_samples': len(X_test),
-                'forecast_horizons': y_true.shape[1],
-                'feature_count': X_features.shape[1],
-                'model_type': type(model).__name__,
-                'has_preprocessor': preprocessor is not None
-            }
+            "overall": overall_metrics,
+            "per_horizon": per_horizon_metrics,
+            "horizon_statistics": horizon_statistics,
+            "key_horizons": key_horizons,
+            "evaluation_metadata": {
+                "test_samples": len(X_test),
+                "forecast_horizons": y_true.shape[1],
+                "feature_count": X_features.shape[1],
+                "model_type": type(model).__name__,
+                "has_preprocessor": preprocessor is not None,
+            },
         }
 
         # Add preprocessor info if available
         if preprocessor:
-            evaluation_results['evaluation_metadata']['preprocessor_info'] = preprocessor.get_preprocessing_info()
+            evaluation_results["evaluation_metadata"][
+                "preprocessor_info"
+            ] = preprocessor.get_preprocessing_info()
 
         logger.info("Model evaluation completed successfully")
-        logger.info(f"Overall performance: RMSE={overall_metrics['rmse']:.2f}, MAE={overall_metrics['mae']:.2f}, R²={overall_metrics['r2']:.3f}")
-        logger.info(f"Best horizon (RMSE): {horizon_statistics['best_horizon_rmse']} ({per_horizon_metrics[horizon_statistics['best_horizon_rmse']-1]['rmse']:.2f})")
-        logger.info(f"Worst horizon (RMSE): {horizon_statistics['worst_horizon_rmse']} ({per_horizon_metrics[horizon_statistics['worst_horizon_rmse']-1]['rmse']:.2f})")
+        logger.info(
+            f"Overall performance: RMSE={overall_metrics['rmse']:.2f}, MAE={overall_metrics['mae']:.2f}, R²={overall_metrics['r2']:.3f}"
+        )
+        logger.info(
+            f"Best horizon (RMSE): {horizon_statistics['best_horizon_rmse']} ({per_horizon_metrics[horizon_statistics['best_horizon_rmse']-1]['rmse']:.2f})"
+        )
+        logger.info(
+            f"Worst horizon (RMSE): {horizon_statistics['worst_horizon_rmse']} ({per_horizon_metrics[horizon_statistics['worst_horizon_rmse']-1]['rmse']:.2f})"
+        )
 
         return evaluation_results
 
     def compare_models(
-        self,
-        evaluation_results_list: List[Dict[str, Any]],
-        model_names: List[str]
+        self, evaluation_results_list: List[Dict[str, Any]], model_names: List[str]
     ) -> Dict[str, Any]:
         """
         Compare multiple model evaluation results.
@@ -343,49 +357,69 @@ class ModelEvaluator:
         logger.info(f"Comparing {len(evaluation_results_list)} models...")
 
         if len(evaluation_results_list) != len(model_names):
-            raise ValueError("Number of evaluation results must match number of model names")
+            raise ValueError(
+                "Number of evaluation results must match number of model names"
+            )
 
         # Extract overall metrics for comparison
         comparison_data = []
         for i, (results, name) in enumerate(zip(evaluation_results_list, model_names)):
-            overall_metrics = results['overall']
-            comparison_data.append({
-                'model_name': name,
-                'model_index': i,
-                'rmse': overall_metrics['rmse'],
-                'mae': overall_metrics['mae'],
-                'r2': overall_metrics['r2'],
-                'mape': overall_metrics['mape'],
-                'predictions_within_10pct': overall_metrics['predictions_within_10pct'],
-                'predictions_within_20pct': overall_metrics['predictions_within_20pct']
-            })
+            overall_metrics = results["overall"]
+            comparison_data.append(
+                {
+                    "model_name": name,
+                    "model_index": i,
+                    "rmse": overall_metrics["rmse"],
+                    "mae": overall_metrics["mae"],
+                    "r2": overall_metrics["r2"],
+                    "mape": overall_metrics["mape"],
+                    "predictions_within_10pct": overall_metrics[
+                        "predictions_within_10pct"
+                    ],
+                    "predictions_within_20pct": overall_metrics[
+                        "predictions_within_20pct"
+                    ],
+                }
+            )
 
         # Determine best model for each metric
         best_models = {
-            'rmse': min(comparison_data, key=lambda x: x['rmse']),
-            'mae': min(comparison_data, key=lambda x: x['mae']),
-            'r2': max(comparison_data, key=lambda x: x['r2']),
-            'mape': min(comparison_data, key=lambda x: x['mape']),
-            'predictions_within_10pct': max(comparison_data, key=lambda x: x['predictions_within_10pct'])
+            "rmse": min(comparison_data, key=lambda x: x["rmse"]),
+            "mae": min(comparison_data, key=lambda x: x["mae"]),
+            "r2": max(comparison_data, key=lambda x: x["r2"]),
+            "mape": min(comparison_data, key=lambda x: x["mape"]),
+            "predictions_within_10pct": max(
+                comparison_data, key=lambda x: x["predictions_within_10pct"]
+            ),
         }
 
         # Calculate relative improvements
-        rmse_values = [d['rmse'] for d in comparison_data]
-        mae_values = [d['mae'] for d in comparison_data]
+        rmse_values = [d["rmse"] for d in comparison_data]
+        mae_values = [d["mae"] for d in comparison_data]
 
         comparison_results = {
-            'model_comparison': comparison_data,
-            'best_models': best_models,
-            'performance_summary': {
-                'rmse_range': [float(np.min(rmse_values)), float(np.max(rmse_values))],
-                'mae_range': [float(np.min(mae_values)), float(np.max(mae_values))],
-                'rmse_improvement': float((np.max(rmse_values) - np.min(rmse_values)) / np.max(rmse_values) * 100),
-                'mae_improvement': float((np.max(mae_values) - np.min(mae_values)) / np.max(mae_values) * 100)
+            "model_comparison": comparison_data,
+            "best_models": best_models,
+            "performance_summary": {
+                "rmse_range": [float(np.min(rmse_values)), float(np.max(rmse_values))],
+                "mae_range": [float(np.min(mae_values)), float(np.max(mae_values))],
+                "rmse_improvement": float(
+                    (np.max(rmse_values) - np.min(rmse_values))
+                    / np.max(rmse_values)
+                    * 100
+                ),
+                "mae_improvement": float(
+                    (np.max(mae_values) - np.min(mae_values)) / np.max(mae_values) * 100
+                ),
             },
-            'recommendation': best_models['rmse']['model_name']  # Recommend based on RMSE
+            "recommendation": best_models["rmse"][
+                "model_name"
+            ],  # Recommend based on RMSE
         }
 
-        logger.info(f"Model comparison completed. Recommended model: {comparison_results['recommendation']}")
+        logger.info(
+            f"Model comparison completed. Recommended model: {comparison_results['recommendation']}"
+        )
 
         return comparison_results
 
@@ -399,9 +433,9 @@ class ModelEvaluator:
         Returns:
             str: Formatted summary string.
         """
-        overall = evaluation_results['overall']
-        horizon_stats = evaluation_results['horizon_statistics']
-        metadata = evaluation_results['evaluation_metadata']
+        overall = evaluation_results["overall"]
+        horizon_stats = evaluation_results["horizon_statistics"]
+        metadata = evaluation_results["evaluation_metadata"]
 
         summary = f"""
 Model Evaluation Summary

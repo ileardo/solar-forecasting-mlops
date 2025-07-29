@@ -6,9 +6,12 @@ for XGBoost time series forecasting.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any, List
 from pathlib import Path
-import os
+from typing import (
+    Any,
+    Dict,
+    List
+)
 
 
 def get_project_root() -> Path:
@@ -38,6 +41,7 @@ class XGBoostConfig:
     These are the optimal parameters identified through hyperparameter tuning
     in the model experiments phase.
     """
+
     n_estimators: int = 50
     max_depth: int = 4
     learning_rate: float = 0.1
@@ -55,14 +59,14 @@ class XGBoostConfig:
             Dict[str, Any]: Configuration parameters as dictionary.
         """
         return {
-            'n_estimators': self.n_estimators,
-            'max_depth': self.max_depth,
-            'learning_rate': self.learning_rate,
-            'subsample': self.subsample,
-            'colsample_bytree': self.colsample_bytree,
-            'random_state': self.random_state,
-            'n_jobs': self.n_jobs,
-            'verbosity': self.verbosity
+            "n_estimators": self.n_estimators,
+            "max_depth": self.max_depth,
+            "learning_rate": self.learning_rate,
+            "subsample": self.subsample,
+            "colsample_bytree": self.colsample_bytree,
+            "random_state": self.random_state,
+            "n_jobs": self.n_jobs,
+            "verbosity": self.verbosity,
         }
 
 
@@ -71,6 +75,7 @@ class TimeSeriesValidationConfig:
     """
     Configuration for time series cross-validation.
     """
+
     n_splits: int = 3
     test_size: int = 7
     min_train_size: int = 20
@@ -83,9 +88,9 @@ class TimeSeriesValidationConfig:
             Dict[str, Any]: Validation parameters as dictionary.
         """
         return {
-            'n_splits': self.n_splits,
-            'test_size': self.test_size,
-            'min_train_size': self.min_train_size
+            "n_splits": self.n_splits,
+            "test_size": self.test_size,
+            "min_train_size": self.min_train_size,
         }
 
 
@@ -94,6 +99,7 @@ class PreprocessorConfig:
     """
     Configuration for solar forecasting preprocessor.
     """
+
     forecast_horizon: int = 24
     lag_days: List[int] = None
     rolling_windows: List[int] = None
@@ -115,11 +121,11 @@ class PreprocessorConfig:
             Dict[str, Any]: Preprocessor parameters as dictionary.
         """
         return {
-            'forecast_horizon': self.forecast_horizon,
-            'lag_days': self.lag_days,
-            'rolling_windows': self.rolling_windows,
-            'scaling_method': self.scaling_method,
-            'target_frequency': self.target_frequency
+            "forecast_horizon": self.forecast_horizon,
+            "lag_days": self.lag_days,
+            "rolling_windows": self.rolling_windows,
+            "scaling_method": self.scaling_method,
+            "target_frequency": self.target_frequency,
         }
 
 
@@ -128,6 +134,7 @@ class TrainingConfig:
     """
     Complete training configuration combining all components.
     """
+
     model: XGBoostConfig = None
     validation: TimeSeriesValidationConfig = None
     preprocessor: PreprocessorConfig = None
@@ -162,13 +169,13 @@ class TrainingConfig:
             Dict[str, Any]: Complete configuration as dictionary.
         """
         return {
-            'model_config': self.model.to_dict(),
-            'validation_config': self.validation.to_dict(),
-            'preprocessor_config': self.preprocessor.to_dict(),
-            'experiment_name': self.experiment_name,
-            'run_name_prefix': self.run_name_prefix,
-            'generation_data_path': self.generation_data_path,
-            'weather_data_path': self.weather_data_path
+            "model_config": self.model.to_dict(),
+            "validation_config": self.validation.to_dict(),
+            "preprocessor_config": self.preprocessor.to_dict(),
+            "experiment_name": self.experiment_name,
+            "run_name_prefix": self.run_name_prefix,
+            "generation_data_path": self.generation_data_path,
+            "weather_data_path": self.weather_data_path,
         }
 
 
@@ -177,8 +184,7 @@ _DEFAULT_TRAINING_CONFIG = None
 
 
 def get_training_config(
-    generation_data_path: str = None,
-    weather_data_path: str = None
+    generation_data_path: str = None, weather_data_path: str = None
 ) -> TrainingConfig:
     """
     Get training configuration with optional path overrides.
@@ -261,5 +267,5 @@ __all__ = [
     "get_model_config",
     "get_validation_config",
     "get_preprocessor_config",
-    "get_project_root"
+    "get_project_root",
 ]
