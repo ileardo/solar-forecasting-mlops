@@ -2,7 +2,7 @@
 # Author: MLOps Team
 # Description: Essential automation for development workflow
 
-.PHONY: help setup install install-dev test test-unit test-integration lint format format-check clean clean-all clean-conda docker-build docker-up docker-down docker-logs docker-clean mlflow-ui mlflow-ui-conda mlflow-clean pre-commit-install pre-commit-run conda-create conda-install conda-install-dev conda-remove conda-info db-init db-init-conda db-migrate db-migrate-conda db-reset dev-setup dev-check dev-check-conda prod-test prod-test-conda prod-build info conda-activate-help
+.PHONY: help setup install install-dev test test-unit test-integration lint format format-check clean clean-all clean-conda docker-build docker-up docker-down docker-logs docker-clean mlflow-ui mlflow-ui-conda mlflow-clean pre-commit-install pre-commit-run conda-create conda-install conda-install-dev conda-remove conda-info db-init db-init-conda db-migrate db-migrate-conda db-reset dev-setup dev-check dev-check-conda prod-test prod-test-conda prod-build info conda-activate-help check-prerequisites setup-env
 
 # Default target
 .DEFAULT_GOAL := help
@@ -20,17 +20,65 @@ TEST_DIR := tests
 # Docker settings
 DOCKER_COMPOSE := docker-compose.yml
 
+# Colors for output
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[1;33m
+BLUE := \033[0;34m
+NC := \033[0m
+
+# Environment files
+ENV_FILE := .env
+ENV_EXAMPLE := .env.example
+
 help: ## Show this help message
 	@echo "Solar Forecasting MLOps - Available Commands:"
 	@echo "============================================="
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
+# Prerequisites check
+check-prerequisites: ## Check if all required tools are installed
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Checking prerequisites..."
+	@command -v python >/dev/null 2>&1 || { echo -e "$(RED)[$(shell date +'%Y-%m-%d %H:%M:%S')] ERROR:$(NC) Python is not installed"; exit 1; }
+	@command -v conda >/dev/null 2>&1 || { echo -e "$(RED)[$(shell date +'%Y-%m-%d %H:%M:%S')] ERROR:$(NC) Conda is not installed"; exit 1; }
+	@command -v git >/dev/null 2>&1 || { echo -e "$(RED)[$(shell date +'%Y-%m-%d %H:%M:%S')] ERROR:$(NC) Git is not installed"; exit 1; }
+	@command -v docker >/dev/null 2>&1 || echo -e "$(YELLOW)[$(shell date +'%Y-%m-%d %H:%M:%S')] WARNING:$(NC) Docker is not installed - some features will be unavailable"
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Prerequisites check completed"
+
+# Setup environment file
+setup-env: ## Create .env file from template with secure random values
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Setting up environment file..."
+	@if [ ! -f "$(ENV_EXAMPLE)" ]; then \
+		echo -e "$(RED)[$(shell date +'%Y-%m-%d %H:%M:%S')] ERROR:$(NC) $(ENV_EXAMPLE) file not found"; \
+		exit 1; \
+	fi
+	@if [ -f "$(ENV_FILE)" ]; then \
+		echo -e "$(YELLOW)[$(shell date +'%Y-%m-%d %H:%M:%S')] WARNING:$(NC) $(ENV_FILE) file already exists"; \
+		read -p "Do you want to overwrite it? (y/N): " REPLY; \
+		if [ "$$REPLY" != "y" ] && [ "$$REPLY" != "Y" ]; then \
+			echo -e "$(BLUE)[$(shell date +'%Y-%m-%d %H:%M:%S')] INFO:$(NC) Skipping .env file creation"; \
+			exit 0; \
+		fi; \
+	fi
+	@cp "$(ENV_EXAMPLE)" "$(ENV_FILE)"
+	@DB_PASSWORD=$$(openssl rand -base64 32 | tr -d "=+/\n" | head -c 20); \
+	sed -i.bak "s/your_secure_password/$$DB_PASSWORD/g" "$(ENV_FILE)" && rm "$(ENV_FILE).bak"; \
+	echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Environment file created with secure random values"; \
+	echo -e "$(BLUE)[$(shell date +'%Y-%m-%d %H:%M:%S')] INFO:$(NC) Database password: $$DB_PASSWORD"
+
 # Environment Setup
-setup: ## Complete environment setup (conda env + install + pre-commit)
-	@echo "Setting up complete development environment..."
+setup: ## Complete environment setup (prerequisites + env + conda + pre-commit)
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Starting complete environment setup..."
+	$(MAKE) check-prerequisites
+	$(MAKE) setup-env
 	$(MAKE) conda-install-dev
 	$(MAKE) pre-commit-install
-	@echo "Environment setup complete!"
+	@echo ""
+	@echo "========================================"
+	@echo "  Environment Setup Complete!"
+	@echo "========================================"
+	@echo "Activate the environment:"
+	@echo "   conda activate $(CONDA_ENV)"
 
 install: ## Install production requirements in current environment
 	@echo "Installing production requirements..."
@@ -113,12 +161,12 @@ format-check: ## Check if code needs formatting
 # Pre-commit Hooks
 pre-commit-install: ## Install pre-commit hooks
 	@echo "Installing pre-commit hooks..."
-	pre-commit install
+	$(CONDA) run -n $(CONDA_ENV) pre-commit install
 	@echo "Pre-commit hooks installed!"
 
 pre-commit-run: ## Run pre-commit on all files
 	@echo "Running pre-commit checks..."
-	pre-commit run --all-files
+	$(CONDA) run -n $(CONDA_ENV) pre-commit run --all-files
 
 # Infrastructure Management
 docker-build: ## Build Docker containers
@@ -198,22 +246,6 @@ conda-activate-help: ## Show how to activate conda environment
 	@echo ""
 	@echo "To deactivate the environment, run:"
 	@echo "conda deactivate"
-
-# AWS LocalStack
-aws-init-localstack: ## Initialize LocalStack S3 with AWS resources
-	@echo "🟡 Waiting for LocalStack to be ready..."
-	@awslocal wait cloudformation-stack-create --stack-name "localstack-init" > /dev/null 2>&1 || true
-	@echo "🟢 LocalStack is ready. Initializing resources..."
-	@BUCKET_NAME=$${S3_BUCKET_ARTIFACTS:-mlflow-artifacts}; \
-	echo "Working with bucket: $$BUCKET_NAME"; \
-	if awslocal s3 ls | grep -q "$$BUCKET_NAME"; then \
-		echo "Bucket '$$BUCKET_NAME' already exists."; \
-	else \
-		echo "Creating bucket '$$BUCKET_NAME'..."; \
-		awslocal s3 mb "s3://$$BUCKET_NAME"; \
-		echo "Bucket created."; \
-	fi
-	@echo "AWS resources initialized."
 
 aws-list-s3: ## List all LocalStack S3 buckets
 	@echo "Listing LocalStack S3 buckets..."
