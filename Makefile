@@ -2,7 +2,7 @@
 # Author: ileardo
 # Description: Essential automation for development workflow
 
-.PHONY: help setup check-prerequisites setup-env conda-create conda-install conda-install-dev conda-remove conda-info pre-commit-install pre-commit-run check-services lint format format-check test test-unit test-integration docker-build docker-up docker-ps docker-logs docker-down docker-clean aws-list-s3 aws-delete-all-s3 train predict-date predict-tomorrow info
+.PHONY: help setup check-prerequisites setup-env conda-create conda-install conda-install-dev conda-remove conda-info pre-commit-install pre-commit-run check-services lint format format-check test test-unit test-integration docker-build docker-up docker-ps docker-logs docker-down docker-clean aws-list-s3 aws-delete-all-s3 train predict-date predict-tomorrow info db-status
 
 # Default target
 .DEFAULT_GOAL := help
@@ -214,6 +214,11 @@ predict-tomorrow: ## Run batch prediction for tomorrow
 	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Running batch prediction for tomorrow..."
 	$(CONDA) run -n $(CONDA_ENV) python -m src.batch.orchestrator
 	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Batch prediction completed!"
+
+db-status: ## Show database status and recent predictions summary
+	@echo "Database Status Summary"
+	@echo "======================"
+	$(CONDA) run -n $(CONDA_ENV) python -m src.batch.storage
 
 # Project Information
 info: ## Show project information
