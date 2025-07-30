@@ -40,7 +40,7 @@ class ReferenceDataCollector:
         self, feature_data: pd.Series, feature_name: str
     ) -> Dict[str, Any]:
         """
-        Compute comprehensive statistics for a single feature.
+        Compute comprehensive statistics for a single feature, handling different dtypes.
 
         Args:
             feature_data: Series containing feature values.
@@ -56,54 +56,82 @@ class ReferenceDataCollector:
             logger.warning(f"Feature {feature_name} contains only NaN values")
             return self._get_empty_feature_stats(feature_name)
 
-        # Basic descriptive statistics
+        # Base stats applicable to all types
         stats = {
             "feature_name": feature_name,
+            "dtype": str(feature_data.dtype),
             "count": int(len(clean_data)),
             "missing_count": int(len(feature_data) - len(clean_data)),
             "missing_percentage": float(
                 (len(feature_data) - len(clean_data)) / len(feature_data) * 100
             ),
-            # Central tendency
-            "mean": float(clean_data.mean()),
-            "median": float(clean_data.median()),
-            "mode": (
-                float(clean_data.mode().iloc[0])
-                if not clean_data.mode().empty
-                else None
-            ),
-            # Spread
-            "std": float(clean_data.std()),
-            "variance": float(clean_data.var()),
-            "min": float(clean_data.min()),
-            "max": float(clean_data.max()),
-            "range": float(clean_data.max() - clean_data.min()),
-            # Percentiles
-            "q1": float(clean_data.quantile(0.25)),
-            "q3": float(clean_data.quantile(0.75)),
-            "iqr": float(clean_data.quantile(0.75) - clean_data.quantile(0.25)),
-            "percentile_1": float(clean_data.quantile(0.01)),
-            "percentile_5": float(clean_data.quantile(0.05)),
-            "percentile_95": float(clean_data.quantile(0.95)),
-            "percentile_99": float(clean_data.quantile(0.99)),
-            # Shape
-            "skewness": float(clean_data.skew()),
-            "kurtosis": float(clean_data.kurtosis()),
-            # Additional metadata
-            "dtype": str(feature_data.dtype),
             "unique_values": int(clean_data.nunique()),
             "is_constant": bool(clean_data.nunique() <= 1),
+            "mode": (
+                clean_data.mode().iloc[0] if not clean_data.mode().empty else None
+            ),
         }
 
-        # Add outlier statistics using IQR method
-        q1, q3 = stats["q1"], stats["q3"]
-        iqr = stats["iqr"]
-        lower_bound = q1 - 1.5 * iqr
-        upper_bound = q3 + 1.5 * iqr
+        # Only compute numerical stats for numeric columns
+        if pd.api.types.is_numeric_dtype(feature_data):
+            # Convert boolean to int (0/1) to avoid deprecated operations
+            if pd.api.types.is_bool_dtype(clean_data):
+                clean_data = clean_data.astype(int)
 
-        outliers = clean_data[(clean_data < lower_bound) | (clean_data > upper_bound)]
-        stats["outlier_count"] = int(len(outliers))
-        stats["outlier_percentage"] = float(len(outliers) / len(clean_data) * 100)
+            # Update stats dict with numeric-only calculations
+            stats.update(
+                {
+                    "mean": float(clean_data.mean()),
+                    "median": float(clean_data.median()),
+                    "std": float(clean_data.std()),
+                    "variance": float(clean_data.var()),
+                    "min": float(clean_data.min()),
+                    "max": float(clean_data.max()),
+                    "range": float(clean_data.max() - clean_data.min()),
+                    "q1": float(clean_data.quantile(0.25)),
+                    "q3": float(clean_data.quantile(0.75)),
+                    "iqr": float(clean_data.quantile(0.75) - clean_data.quantile(0.25)),
+                    "skewness": float(clean_data.skew()),
+                    "kurtosis": float(clean_data.kurtosis()),
+                }
+            )
+
+            # Outlier calculation using IQR method
+            q1, q3 = stats["q1"], stats["q3"]
+            iqr = stats["iqr"]
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+
+            outliers = clean_data[
+                (clean_data < lower_bound) | (clean_data > upper_bound)
+            ]
+            stats["outlier_count"] = int(len(outliers))
+            stats["outlier_percentage"] = (
+                float(len(outliers) / len(clean_data) * 100)
+                if len(clean_data) > 0
+                else 0.0
+            )
+
+        else:
+            # For non-numeric types, fill numerical fields with None
+            stats.update(
+                {
+                    "mean": None,
+                    "median": None,
+                    "std": None,
+                    "variance": None,
+                    "min": None,
+                    "max": None,
+                    "range": None,
+                    "q1": None,
+                    "q3": None,
+                    "iqr": None,
+                    "skewness": None,
+                    "kurtosis": None,
+                    "outlier_count": 0,
+                    "outlier_percentage": 0.0,
+                }
+            )
 
         return stats
 
@@ -239,7 +267,11 @@ class ReferenceDataCollector:
             "numeric_features_count": len(numeric_features.columns),
             "high_correlation_pairs": high_corr_pairs,
             "high_correlation_count": len(high_corr_pairs),
-            "average_absolute_correlation": float(np.abs(corr_matrix.values).mean()),
+            "average_absolute_correlation": (
+                float(corr_matrix.abs().values.mean())
+                if not pd.isna(corr_matrix.abs().values.mean())
+                else 0.0
+            ),
         }
 
         return correlation_stats

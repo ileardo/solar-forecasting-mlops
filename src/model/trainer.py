@@ -7,13 +7,11 @@ MLflow integration, and automatic model persistence for production deployment.
 
 import logging
 import os
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import mlflow
-import mlflow.pyfunc
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
@@ -24,6 +22,9 @@ from sklearn.multioutput import MultiOutputRegressor
 
 from src.data.preprocessor import SolarForecastingPreprocessor
 from src.model.model_config import TrainingConfig, get_training_config
+from src.model.model_utils import convert_to_json_serializable
+from src.monitoring.db_writer import MonitoringDBWriter
+from src.monitoring.reference_collector import ReferenceDataCollector
 from src.utils.mlflow_utils import (
     get_or_create_experiment,
     log_model_metrics,
@@ -87,6 +88,18 @@ class ModelTrainer:
             f"ModelTrainer initialized with config: {self.config.experiment_name}"
         )
         logger.info(f"Model params: {self.config.model.to_dict()}")
+
+        # Initialize monitoring components
+        try:
+            self.reference_collector = ReferenceDataCollector()
+            self.monitoring_db = MonitoringDBWriter()
+            self.monitoring_enabled = True
+            logger.info("Monitoring components initialized successfully")
+        except Exception as e:
+            logger.warning(f"Monitoring components failed to initialize: {str(e)}")
+            self.reference_collector = None
+            self.monitoring_db = None
+            self.monitoring_enabled = False
 
     def _create_xgboost_model(self) -> MultiOutputRegressor:
         """
@@ -348,6 +361,41 @@ class ModelTrainer:
                 preprocessor_path = artifacts_dir / f"preprocessor_{current_run_id}.pkl"
                 self.preprocessor.save_preprocessor(str(preprocessor_path))
                 logger.info(f"Preprocessor saved locally at: {preprocessor_path}")
+
+                if self.monitoring_enabled:
+                    try:
+                        logger.info("Collecting reference data for monitoring...")
+
+                        model_metadata = {
+                            "model_name": self.config.experiment_name,
+                            "model_version": current_run_id,
+                            "algorithm": "XGBoost MultiOutputRegressor",
+                            "training_config": self.config.to_dict(),
+                            "mlflow_run_id": current_run_id,
+                        }
+
+                        model_metadata = convert_to_json_serializable(model_metadata)
+
+                        reference_data = (
+                            self.reference_collector.collect_from_training_data(
+                                X_train, y_train, model_metadata
+                            )
+                        )
+
+                        reference_id = self.monitoring_db.save_reference_data(
+                            reference_data, self.config.experiment_name, current_run_id
+                        )
+
+                        logger.info(
+                            f"Reference data saved for monitoring with ID: {reference_id}"
+                        )
+
+                    except Exception as monitoring_error:
+                        logger.warning(f"Monitoring failed: {str(monitoring_error)}")
+                else:
+                    logger.info(
+                        "Monitoring disabled - skipping reference data collection"
+                    )
 
                 # Compile final metrics
                 self.training_metrics = {
