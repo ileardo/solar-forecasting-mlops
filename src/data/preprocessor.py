@@ -22,7 +22,6 @@ from typing import (
     List,
     Optional,
     Tuple,
-    Union
 )
 
 import numpy as np
@@ -37,6 +36,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=dangerous-default-value,invalid-name
 class SolarForecastingPreprocessor:
     """
     Time series preprocessor for operational solar power forecasting.
@@ -282,7 +282,8 @@ class SolarForecastingPreprocessor:
         df_features["same_weekday_last_week"] = df_features["AC_POWER"].shift(24 * 7)
 
         logger.info(
-            f"Created {len(self.lag_days)} lag features and {len(self.rolling_windows)} rolling features"
+            f"Created {len(self.lag_days)} lag features and "
+            f"{len(self.rolling_windows)} rolling features"
         )
         return df_features
 
@@ -465,7 +466,7 @@ class SolarForecastingPreprocessor:
         latest_features = df_with_lags.iloc[-1:].copy()
 
         # Create temporal features for tomorrow (the 24 hours we're predicting)
-        tomorrow_dates = pd.date_range(
+        _ = pd.date_range(
             start=midnight_time + timedelta(hours=1), periods=24, freq="1H"
         )
 

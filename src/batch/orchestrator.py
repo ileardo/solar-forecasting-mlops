@@ -5,19 +5,15 @@ This module provides Prefect-based orchestration for automated solar
 forecasting batch predictions with task scheduling and monitoring.
 """
 
-from src.batch.predictor import BatchPredictor
-from src.batch.storage import PredictionStorage
-
 import logging
 from datetime import datetime, timedelta
-from typing import (
-    Any,
-    Dict,
-    Optional
-)
+from typing import Any, Dict, Optional
 
 from prefect import flow, task
 from prefect.logging import get_run_logger
+
+from src.batch.predictor import BatchPredictor
+from src.batch.storage import PredictionStorage
 
 
 # Configure logging

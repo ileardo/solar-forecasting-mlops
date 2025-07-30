@@ -5,8 +5,6 @@ This module provides comprehensive evaluation capabilities for multi-step
 forecasting models with focus on numerical metrics and performance analysis.
 """
 
-from src.data.preprocessor import SolarForecastingPreprocessor
-
 import logging
 from typing import (
     Any,
@@ -17,12 +15,10 @@ from typing import (
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score
-)
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.multioutput import MultiOutputRegressor
+
+from src.data.preprocessor import SolarForecastingPreprocessor
 
 
 # Configure logging

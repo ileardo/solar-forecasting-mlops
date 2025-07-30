@@ -7,11 +7,7 @@ for XGBoost time series forecasting.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import (
-    Any,
-    Dict,
-    List
-)
+from typing import Any, Dict, List
 
 
 def get_project_root() -> Path:

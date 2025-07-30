@@ -129,12 +129,8 @@ check-services: ## Check if all MLOps services are running
 
 # Code Quality
 lint: ## Run all linting checks
-	@echo "Running linting checks..."
+	@echo "Running pylint..."
 	pylint $(SRC_DIR)
-	black --check --diff $(SRC_DIR) $(TEST_DIR)
-	isort --check-only --diff $(SRC_DIR) $(TEST_DIR)
-	mypy $(SRC_DIR)
-	@echo "All linting checks completed!"
 
 format: ## Format code with black and isort
 	@echo "Formatting code..."

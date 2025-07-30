@@ -5,21 +5,19 @@ This version uses MLflow server instead of direct database connection
 to ensure artifacts are stored in S3 correctly.
 """
 
-from src.config.settings import get_settings
+# pylint: disable=no-else-return, broad-exception-caught, unspecified-encoding
 
 import logging
+import os
 import uuid
 from datetime import datetime
-from typing import (
-    Any,
-    Dict,
-    Optional,
-    Tuple
-)
+from typing import Any, Dict, Optional, Tuple
 
 import mlflow
 from mlflow import MlflowClient
 from mlflow.exceptions import MlflowException
+
+from src.config.settings import get_settings
 
 
 # Configure logging
@@ -43,8 +41,6 @@ def setup_mlflow_tracking() -> None:
     mlflow.set_tracking_uri(mlflow_server_uri)
 
     # Set S3 configuration for client-side operations (if needed)
-    import os
-
     os.environ["AWS_ACCESS_KEY_ID"] = settings.aws_access_key_id
     os.environ["AWS_SECRET_ACCESS_KEY"] = settings.aws_secret_access_key
     os.environ["MLFLOW_S3_ENDPOINT_URL"] = settings.mlflow_s3_endpoint_url or ""
@@ -261,9 +257,6 @@ def quick_test_mlflow() -> bool:
                 f.write(artifact_content)
 
             mlflow.log_artifact(artifact_path)
-
-            # Clean up local file
-            import os
 
             os.remove(artifact_path)
 

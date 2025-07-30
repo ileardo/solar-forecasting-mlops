@@ -5,20 +5,16 @@ This module provides database storage functionality for saving and retrieving
 batch prediction results for monitoring and analysis.
 """
 
-from src.config.settings import get_settings
-
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import (
-    Any,
-    Dict,
-    Optional
-)
+from typing import Any, Dict, Optional
 
 import pandas as pd
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+from src.config.settings import get_settings
 
 
 # Configure logging

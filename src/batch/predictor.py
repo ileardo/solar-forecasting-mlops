@@ -6,22 +6,17 @@ production models from MLflow registry and generates 24-hour solar forecasts
 for operational deployment.
 """
 
-from src.data.preprocessor import SolarForecastingPreprocessor
-from src.model.registry import ModelRegistry
-
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import (
-    Any,
-    Dict,
-    Optional,
-    Tuple
-)
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.multioutput import MultiOutputRegressor
+
+from src.data.preprocessor import SolarForecastingPreprocessor
+from src.model.registry import ModelRegistry
 
 
 # Configure logging

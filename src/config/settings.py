@@ -64,6 +64,7 @@ class Settings:
     @property
     def database_url(self) -> str:
         """Get database connection URL."""
+        # pylint: disable=line-too-long
         return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     @property

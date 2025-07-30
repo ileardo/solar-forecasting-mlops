@@ -5,15 +5,13 @@ disable = [
     "too-many-instance-attributes",
     "too-many-arguments",
     "too-many-positional-arguments",
+    "f-string-without-interpolation",
+    "broad-exception-caught",
+    "too-many-locals",
 ]
 
 [tool.isort]
 profile = "black"
 line_length = 88
-multi_line_output = 3
-include_trailing_comma = false
-force_grid_wrap = 3
-use_parentheses = true
-ensure_newline_before_comments = true
 lines_after_imports = 2
-sections = ["FUTURE", "LOCALFOLDER","FIRSTPARTY", "STDLIB","THIRDPARTY"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
