@@ -77,27 +77,7 @@ class ModelRegistry:
         """
         Register a complete model package (model + preprocessor) in MLflow registry.
 
-        Args:
-            model: Trained multi-output regression model.
-            preprocessor: Fitted preprocessor used for training.
-            model_name: Name for the registered model.
-            description: Optional description for the model version.
-            tags: Optional tags for the model version.
-            run_id: Optional MLflow run ID. If None, uses current active run.
-
-        Returns:
-            str: Version number of the registered model.
-
-        Raises:
-            RuntimeError: When model registration fails.
-
-        Example:
-            >>> version = registry.register_model_package(
-            ...     trained_model, fitted_preprocessor, "solar-forecasting-prod",
-            ...     description="XGBoost model with optimized parameters",
-            ...     tags={"algorithm": "xgboost", "horizon": "24h"}
-            ... )
-            >>> print(f"Registered model version: {version}")
+        This version maintains separate storage: model in MLflow/S3, preprocessor in local artifacts directory.
         """
         logger.info(f"Registering model package: {model_name}")
 
@@ -106,16 +86,8 @@ class ModelRegistry:
             if run_id is None:
                 current_run = mlflow.active_run()
                 if current_run is None:
-                    # Create a new run for model registration
-                    logger.info(
-                        "No active run found, creating new run for model registration"
-                    )
-                    registration_run = mlflow.start_run(
-                        run_name=f"model_registration_{model_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                    )
-                    run_id = registration_run.info.run_id
-                else:
-                    run_id = current_run.info.run_id
+                    raise RuntimeError("No active run found and no run_id provided")
+                run_id = current_run.info.run_id
 
             # Create registered model if it doesn't exist
             try:
@@ -130,49 +102,40 @@ class ModelRegistry:
                 else:
                     raise
 
-            # Save preprocessor to temporary file for artifact logging
-            with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-                preprocessor.save_preprocessor(f.name)
-                preprocessor_path = f.name
+            # Save preprocessor to local artifacts directory
+            project_root = Path(__file__).parent.parent.parent
+            artifacts_dir = project_root / "artifacts"
+            artifacts_dir.mkdir(exist_ok=True)
+            preprocessor_local_path = artifacts_dir / f"preprocessor_{run_id}.pkl"
 
-            # Log preprocessor and model in the appropriate run context
-            if (
-                mlflow.active_run() is not None
-                and mlflow.active_run().info.run_id == run_id
-            ):
-                # We're already in the correct run context
-                mlflow.log_artifact(preprocessor_path, artifact_path="preprocessor")
-                model_info = mlflow.sklearn.log_model(
-                    model, "model", registered_model_name=model_name
-                )
-            else:
-                # Need to start/resume the run
-                with mlflow.start_run(run_id=run_id):
-                    mlflow.log_artifact(preprocessor_path, artifact_path="preprocessor")
-                    model_info = mlflow.sklearn.log_model(
-                        model, "model", registered_model_name=model_name
-                    )
+            preprocessor.save_preprocessor(str(preprocessor_local_path))
+            logger.info(f"Preprocessor saved locally at: {preprocessor_local_path}")
 
-            # Get the created model version
-            model_version = model_info.registered_model_version
+            # Register the EXISTING model from the run (don't re-log it)
+            model_uri = f"runs:/{run_id}/model"
 
-            # Add version-specific metadata
-            version_description = (
-                description
-                or f"Solar forecasting model v{model_version} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            # Create model version using existing model artifacts
+            model_version_info = self.client.create_model_version(
+                name=model_name,
+                source=model_uri,
+                description=description
+                or f"Solar forecasting model v{datetime.now().strftime('%Y%m%d_%H%M%S')} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             )
 
-            self.client.update_model_version(
-                name=model_name, version=model_version, description=version_description
+            model_version = model_version_info.version
+            logger.info(
+                f"Registered existing model from {model_uri} as version {model_version}"
             )
 
-            # Add tags if provided
+            # Add tags with explicit run_id storage
             default_tags = {
                 "model_type": "XGBoost MultiOutputRegressor",
                 "forecast_horizon": str(preprocessor.forecast_horizon),
                 "features_count": str(len(preprocessor.get_feature_names())),
                 "created_date": datetime.now().strftime("%Y-%m-%d"),
                 "mlops_stage": "development",
+                "preprocessor_location": "local_artifacts",
+                "source_run_id": run_id,
             }
 
             if tags:
@@ -187,6 +150,8 @@ class ModelRegistry:
                 f"Successfully registered model package {model_name} version {model_version}"
             )
             logger.info(f"Model URI: models:/{model_name}/{model_version}")
+            logger.info(f"Preprocessor location: {preprocessor_local_path}")
+            logger.info(f"Source run_id saved in tags: {run_id}")
 
             return model_version
 
@@ -202,42 +167,24 @@ class ModelRegistry:
     ) -> Tuple[MultiOutputRegressor, SolarForecastingPreprocessor]:
         """
         Load a complete model package (model + preprocessor) from the registry.
-
-        Args:
-            model_name: Name of the registered model.
-            version: Specific version to load. If None, uses latest from stage.
-            stage: Model stage ('Production', 'Staging', 'None').
-                   Used only if version is None.
-
-        Returns:
-            Tuple containing:
-                - MultiOutputRegressor: Loaded trained model.
-                - SolarForecastingPreprocessor: Loaded fitted preprocessor.
-
-        Raises:
-            RuntimeError: When model loading fails.
-
-        Example:
-            >>> # Load specific version
-            >>> model, preprocessor = registry.load_model_package(
-            ...     "solar-forecasting-prod", version="1"
-            ... )
-            >>>
-            >>> # Load production model
-            >>> model, preprocessor = registry.load_model_package(
-            ...     "solar-forecasting-prod", stage="Production"
-            ... )
         """
         logger.info(f"Loading model package: {model_name}")
 
         try:
-            # Determine model URI
+            # Determine model URI and get version info
             if version:
                 model_uri = f"models:/{model_name}/{version}"
                 logger.info(f"Loading specific version: {version}")
+                model_version_info = self.client.get_model_version(model_name, version)
             elif stage:
                 model_uri = f"models:/{model_name}/{stage}"
                 logger.info(f"Loading from stage: {stage}")
+                latest_versions = self.client.get_latest_versions(
+                    model_name, stages=[stage]
+                )
+                if not latest_versions:
+                    raise RuntimeError(f"No model found in stage {stage}")
+                model_version_info = latest_versions[0]
             else:
                 # Default to latest version
                 latest_versions = self.client.get_latest_versions(
@@ -245,49 +192,71 @@ class ModelRegistry:
                 )
                 if not latest_versions:
                     raise RuntimeError(f"No versions found for model {model_name}")
-                version = latest_versions[0].version
-                model_uri = f"models:/{model_name}/{version}"
-                logger.info(f"Loading latest version: {version}")
+                model_version_info = latest_versions[0]
+                model_uri = f"models:/{model_name}/{model_version_info.version}"
+                logger.info(f"Loading latest version: {model_version_info.version}")
 
             # Load the model
             logger.info(f"Loading model from URI: {model_uri}")
             model = mlflow.sklearn.load_model(model_uri)
 
-            # Get run info to locate preprocessor artifact
-            if version:
-                model_version_info = self.client.get_model_version(model_name, version)
-            else:
-                # For stage-based loading, get the version info
-                latest_versions = self.client.get_latest_versions(
-                    model_name, stages=[stage]
-                )
-                if not latest_versions:
-                    raise RuntimeError(f"No model found in stage {stage}")
-                model_version_info = latest_versions[0]
-
+            # Get run_id with fallback to tags
             run_id = model_version_info.run_id
 
-            # Load preprocessor from local artifacts directory
-            try:
-                # Build path to local preprocessor file
-                project_root = Path(
-                    __file__
-                ).parent.parent.parent  # Go up from src/model/ to project root
-                artifacts_dir = project_root / "artifacts"
-                preprocessor_file = artifacts_dir / f"preprocessor_{run_id}.pkl"
+            if not run_id or run_id.strip() == "":
+                # Fallback: get run_id from tags
+                logger.info("Attempting to retrieve run_id from tags...")
 
-                logger.info(f"Looking for preprocessor at: {preprocessor_file}")
+                # Handle different tag formats
+                try:
+                    if hasattr(model_version_info.tags, "__iter__") and hasattr(
+                        list(model_version_info.tags)[0], "key"
+                    ):
+                        # Tags are objects with .key and .value attributes
+                        tags = {tag.key: tag.value for tag in model_version_info.tags}
+                    else:
+                        # Tags are already a dictionary or similar structure
+                        tags = dict(model_version_info.tags)
 
-                if not preprocessor_file.exists():
+                    logger.info(f"Available tags: {list(tags.keys())}")
+                    run_id = tags.get("source_run_id")
+
+                except Exception as tag_error:
+                    logger.error(f"Error processing tags: {tag_error}")
+                    logger.info(f"Tags type: {type(model_version_info.tags)}")
+                    logger.info(f"Tags content: {model_version_info.tags}")
+
+                    # Last resort: try direct access if tags is a dict
+                    try:
+                        if isinstance(model_version_info.tags, dict):
+                            run_id = model_version_info.tags.get("source_run_id")
+                        else:
+                            raise RuntimeError("Cannot parse tags structure")
+                    except Exception:
+                        raise RuntimeError(
+                            f"Cannot determine run_id from tags. Tags structure: {type(model_version_info.tags)}"
+                        )
+
+                logger.info(f"Retrieved run_id from tags: {run_id}")
+
+                if not run_id:
                     raise RuntimeError(
-                        f"Preprocessor file not found: {preprocessor_file}"
+                        f"Cannot determine run_id for model version {model_version_info.version}"
                     )
+            else:
+                logger.info(f"Using run_id from model version info: {run_id}")
 
-                logger.info(f"Found preprocessor file: {preprocessor_file.name}")
+            # Load preprocessor from local artifacts directory
+            project_root = Path(__file__).parent.parent.parent
+            artifacts_dir = project_root / "artifacts"
+            preprocessor_file = artifacts_dir / f"preprocessor_{run_id}.pkl"
 
-            except Exception as e:
-                logger.error(f"Failed to locate preprocessor file: {str(e)}")
-                raise RuntimeError(f"Preprocessor file not found: {str(e)}") from e
+            logger.info(f"Looking for preprocessor at: {preprocessor_file}")
+
+            if not preprocessor_file.exists():
+                raise RuntimeError(f"Preprocessor file not found: {preprocessor_file}")
+
+            logger.info(f"Found preprocessor file: {preprocessor_file.name}")
 
             # Load the preprocessor
             logger.info(f"Loading preprocessor from: {preprocessor_file}")
