@@ -185,14 +185,9 @@ class PredictionStorage:
 
         Returns:
             pd.DataFrame: Recent predictions with all fields.
-
-        Example:
-            >>> recent = storage.get_recent_predictions(days=30)
-            >>> print(f"Found {len(recent)} recent predictions")
         """
         logger.info(f"Retrieving predictions from last {days} days")
 
-        # Build query with optional model filter
         base_sql = """
         SELECT
             id, prediction_date, model_name, forecast_24h, peak_power, peak_hour,
@@ -200,7 +195,6 @@ class PredictionStorage:
         FROM predictions
         WHERE prediction_date >= %s
         """
-
         params = [datetime.now().date() - timedelta(days=days)]
 
         if model_name:
@@ -215,11 +209,9 @@ class PredictionStorage:
                     cursor.execute(base_sql, params)
                     rows = cursor.fetchall()
 
-            # Convert to DataFrame
             if rows:
                 df = pd.DataFrame([dict(row) for row in rows])
-                # Parse JSON forecast data back to lists
-                df["forecast_24h"] = df["forecast_24h"].apply(json.loads)
+
                 logger.info(f"Retrieved {len(df)} predictions")
                 return df
             else:
