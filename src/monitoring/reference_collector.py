@@ -7,10 +7,12 @@ baseline reference statistics for drift detection and model monitoring.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
+
+from src.monitoring.monitoring_utils import convert_to_json_serializable
 
 
 # Configure logging
@@ -360,7 +362,7 @@ class ReferenceDataCollector:
             f"Data quality: {reference_data['data_quality']['features_with_missing']} features with missing values"
         )
 
-        return reference_data
+        return convert_to_json_serializable(reference_data)
 
     def get_drift_reference_summary(
         self, reference_data: Dict[str, Any]

@@ -17,6 +17,7 @@ from sklearn.multioutput import MultiOutputRegressor
 
 from src.data.preprocessor import SolarForecastingPreprocessor
 from src.model.registry import ModelRegistry
+from src.monitoring.drift_detector import SimpleDriftDetector
 
 
 # Configure logging
@@ -50,6 +51,15 @@ class BatchPredictor:
         self.preprocessor: Optional[SolarForecastingPreprocessor] = None
         self.registry = ModelRegistry()
         self.is_loaded = False
+
+        try:
+            self.drift_detector = SimpleDriftDetector(model_name)
+            self.drift_monitoring_enabled = True
+            logger.info("Drift monitoring enabled")
+        except Exception as e:
+            logger.warning(f"Drift monitoring disabled: {str(e)}")
+            self.drift_detector = None
+            self.drift_monitoring_enabled = False
 
         logger.info(f"BatchPredictor initialized for model: {model_name}")
 
@@ -108,6 +118,25 @@ class BatchPredictor:
             features = self.preprocessor.prepare_midnight_prediction(
                 data, prediction_date
             )
+
+            if self.drift_monitoring_enabled and self.drift_detector:
+                try:
+                    drift_detected, drift_results = (
+                        self.drift_detector.quick_drift_check(features)
+                    )
+
+                    if drift_detected:
+                        logger.warning(
+                            f"Data drift detected in {drift_results['drifted_features_count']} features"
+                        )
+                        logger.warning(
+                            f"Drifted features: {drift_results['drifted_features']}"
+                        )
+                    else:
+                        logger.info("No data drift detected")
+
+                except Exception as drift_error:
+                    logger.warning(f"Drift detection failed: {str(drift_error)}")
 
             # Generate 24-hour forecast
             forecast_features = features.drop("DATE_TIME", axis=1)

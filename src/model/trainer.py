@@ -367,7 +367,7 @@ class ModelTrainer:
                         logger.info("Collecting reference data for monitoring...")
 
                         model_metadata = {
-                            "model_name": self.config.experiment_name,
+                            "model_name": "solar-forecasting-prod",
                             "model_version": current_run_id,
                             "algorithm": "XGBoost MultiOutputRegressor",
                             "training_config": self.config.to_dict(),
@@ -383,7 +383,7 @@ class ModelTrainer:
                         )
 
                         reference_id = self.monitoring_db.save_reference_data(
-                            reference_data, self.config.experiment_name, current_run_id
+                            reference_data, "solar-forecasting-prod", current_run_id
                         )
 
                         logger.info(
