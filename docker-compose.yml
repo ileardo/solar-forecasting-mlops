@@ -96,7 +96,7 @@ services:
   mlflow:
     build:
       context: .
-      dockerfile: Dockerfile.mlflow
+      dockerfile: infrastructure/docker/Dockerfile.mlflow
     container_name: solar-mlflow
     ports:
       - "${MLFLOW_PORT:-5000}:5000"
