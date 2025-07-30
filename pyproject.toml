@@ -15,3 +15,11 @@ profile = "black"
 line_length = 88
 lines_after_imports = 2
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--cov=src/batch",
+    "--cov-report=html",
+    "--cov-report=term-missing"
+]

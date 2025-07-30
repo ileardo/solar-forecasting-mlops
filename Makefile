@@ -146,12 +146,12 @@ format-check: ## Check if code needs formatting
 # Testing
 test: ## Run all tests (unit + integration)
 	@echo "Running all tests..."
-	pytest $(TEST_DIR) -v --cov=$(SRC_DIR) --cov-report=html --cov-report=term-missing
+	pytest $(TEST_DIR) -v
 	@echo "All tests completed!"
 
 test-unit: ## Run unit tests only
 	@echo "Running unit tests..."
-	pytest $(TEST_DIR)/unit -v --cov=$(SRC_DIR) --cov-report=term-missing
+	pytest $(TEST_DIR)/unit -v
 	@echo "Unit tests completed!"
 
 test-integration: ## Run integration tests only
