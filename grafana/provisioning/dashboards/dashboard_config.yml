@@ -4,17 +4,6 @@
 apiVersion: 1
 
 providers:
-  - name: 'solar-forecasting-dashboards'
-    orgId: 1
-    folder: 'Solar Forecasting MLOps'
-    folderUid: 'solar-mlops'
-    type: file
-    disableDeletion: false
-    updateIntervalSeconds: 10
-    allowUiUpdates: true
-    options:
-      path: /var/lib/grafana/dashboards
-
   - name: 'monitoring-dashboards'
     orgId: 1
     folder: 'Model Monitoring'
