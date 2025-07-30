@@ -211,27 +211,7 @@ class MonitoringDBWriter:
                     row = cursor.fetchone()
 
             if row:
-                # Parse JSON fields back to Python objects
                 reference_data = dict(row)
-                reference_data["feature_statistics"] = json.loads(
-                    reference_data["feature_statistics"]
-                )
-                reference_data["target_statistics"] = json.loads(
-                    reference_data["target_statistics"]
-                )
-                reference_data["correlation_analysis"] = json.loads(
-                    reference_data["correlation_analysis"]
-                )
-                reference_data["data_quality"] = json.loads(
-                    reference_data["data_quality"]
-                )
-                reference_data["model_metadata"] = json.loads(
-                    reference_data["model_metadata"]
-                )
-                reference_data["drift_reference"] = json.loads(
-                    reference_data["drift_reference"]
-                )
-
                 logger.info(
                     f"Reference data retrieved for {model_name} v{reference_data['model_version']}"
                 )
@@ -286,7 +266,8 @@ class MonitoringDBWriter:
                     row = cursor.fetchone()
 
             if row and row[0]:
-                drift_reference = json.loads(row[0])
+                # psycopg2 already decodes JSON, so row[0] is a dict.
+                drift_reference = row[0]
                 logger.info(
                     f"Drift reference retrieved for {len(drift_reference)} features"
                 )
