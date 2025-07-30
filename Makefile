@@ -258,3 +258,20 @@ aws-delete-all-s3: ## Delete all LocalStack S3 buckets
 		awslocal s3 rb s3://$$bucket --force; \
 	done
 	@echo "All buckets deleted."
+
+check-services: ## Check if all MLOps services are running
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Checking MLOps services..."
+	@echo "PostgreSQL:" && docker exec solar-postgres pg_isready -U $(DB_USER) -d $(DB_NAME) || echo "❌ PostgreSQL not ready"
+	@echo "LocalStack S3:" && docker exec solar-localstack awslocal s3 ls || echo "❌ LocalStack not ready"
+	@echo "MLflow:" && curl -f http://localhost:5000/health >/dev/null 2>&1 && echo "✅ MLflow ready" || echo "❌ MLflow not ready"
+	@echo "Prefect:" && curl -f http://localhost:4200/api/health >/dev/null 2>&1 && echo "✅ Prefect ready" || echo "❌ Prefect not ready"
+
+train: ## Run complete training pipeline (train + eval + registry)
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Starting complete training pipeline..."
+	$(CONDA) run -n $(CONDA_ENV) python -m src.model.run_pipeline
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Training pipeline completed!"
+
+predict-date: ## Run batch prediction for specific date (usage: make predict-date DATE=2020-06-15)
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Running batch prediction for $(DATE)..."
+	$(CONDA) run -n $(CONDA_ENV) python -m src.batch.orchestrator $(DATE)
+	@echo -e "$(GREEN)[$(shell date +'%Y-%m-%d %H:%M:%S')]$(NC) Batch prediction completed!"
