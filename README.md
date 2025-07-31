@@ -4,9 +4,11 @@ End-to-end MLOps pipeline for solar power generation forecasting using productio
 
 ## Problem Statement
 
-This project implements a complete MLOps framework for solar power forecasting. The primary objective is to demonstrate MLOps best practices and infrastructure capabilities rather than achieving optimal forecasting performance. The system predicts 24-hour solar power generation using historical data and operational constraints.
+This project implements a complete MLOps framework for solar power forecasting. The system predicts 24-hour solar power generation using historical data and operational constraints.
 
 **Key Challenge**: Design a production-ready batch prediction system that operates under realistic constraints: predictions must be generated at midnight using only historical data available at that time, ensuring no future data leakage.
+
+**ML Model**: XGBoost multi-output regressor that takes historical solar generation data (lag features from 1, 2, 3, 7, and 30 days) and temporal features (hour of day, seasonality patterns, solar elevation proxies) as input, and outputs 24-hour ahead AC power predictions (one prediction per hour for the next day). The model uses only features available at midnight to ensure operational realism.
 
 **Business Value**: Enable grid operators and energy companies to plan daily operations by providing reliable next-day solar generation forecasts with automated monitoring and retraining capabilities.
 
@@ -187,10 +189,11 @@ The system implements comprehensive monitoring:
 - **Prediction Quality**: Energy generation accuracy monitoring
 - **System Health**: Infrastructure and service status monitoring
 
-### Grafana Dashboards (Under Developement)
+### Grafana Dashboards
 - **Drift Trends**: Visual drift patterns over time
 - **Performance Metrics**: Model accuracy and prediction quality
 - **System Status**: Service health and operational metrics
+- **Note**: Monitoring Dashboard under developement
 
 ## Future Development
 
