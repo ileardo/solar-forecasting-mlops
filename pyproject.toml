@@ -20,6 +20,19 @@ sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 testpaths = ["tests"]
 addopts = [
     "--cov=src/batch",
+    "--cov=src/model",
     "--cov-report=html",
-    "--cov-report=term-missing"
+    "--cov-report=term-missing",
+]
+
+filterwarnings = [
+    "ignore::pytest.PytestDeprecationWarning",
+    "ignore::FutureWarning:pandas",
+    "ignore::FutureWarning"
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/model/run_pipeline.py"
 ]
