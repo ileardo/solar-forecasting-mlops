@@ -100,7 +100,50 @@ solar-forecasting-mlops/
 | **Pre-commit Hooks** | ✅ | Automated quality checks before commits |
 | **CI/CD Pipeline** | ❌ | Not implemented (scope limitation) |
 
-**Total Best Practices Score: 5/7 points**
+## Quick Start
+
+### Prerequisites
+- Python 3.11+
+- Conda
+- Docker & Docker Compose
+- Git
+
+### Setup Instructions
+```bash
+# 1. Clone repository
+git clone https://github.com/ileardo/solar-forecasting-mlops.git
+cd solar-forecasting-mlops
+conda init
+
+# 2. Setup environment
+make setup
+conda activate solar-forecasting-mlops
+
+# 3. Start infrastructure services
+make docker-build && make docker-up
+
+# 4. Verify services are running
+make check-services
+
+# 5. Run complete workflow
+make train             # Train model with MLflow tracking
+make predict-tomorrow  # Generate batch prediction
+make monitor           # Execute monitoring analysis
+```
+
+### Service Access
+Once services are running, access the following interfaces:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **MLflow** | http://localhost:5000 | Experiment tracking and model registry |
+| **Grafana** | http://localhost:3001 | Monitoring dashboards (admin/admin) |
+| **Prefect** | http://localhost:4200 | Workflow orchestration UI |
+| **Adminer** | http://localhost:8080 | Database administration |
+
+**Database Access**: The automatically generated database password is stored in the `.env` file after running `make setup`.
+
+**Note**: In GitHub Codespaces, you'll need to forward these ports to access the UIs.
 
 ## Key Commands
 
@@ -108,9 +151,9 @@ The project provides comprehensive automation through Make commands:
 
 ```bash
 make setup              # Complete environment setup
-make train              # Run training pipeline with MLflow tracking and staging
-make predict-tomorrow   # Run batch prediction for tomoroww
-make predict-date       # Run batch prediction (DATE=YYYY-MM-DD)
+make train              # Run training pipeline with MLflow tracking --> train + staging + production
+make predict-tomorrow   # Run batch prediction flow for tomoroww
+make predict-date       # Run batch prediction flow (DATE=YYYY-MM-DD)
 make monitor            # Execute monitoring flow with drift (last 7 days) analysis
 make docker-up          # Start all infrastructure services
 make check-services     # Verify all services are running
@@ -130,50 +173,6 @@ For complete command reference: `make help`
 - **Drift Monitoring**: Weekly monitoring flows detect model degradation
 - **Automatic Retraining**: Conditional workflows trigger retraining when drift exceeds thresholds
 - **Manual Override**: All processes can be triggered manually for operational flexibility
-
-## Quick Start
-
-### Prerequisites
-- Python 3.11+
-- Conda
-- Docker & Docker Compose
-- Git
-
-### Setup Instructions
-```bash
-# 1. Clone repository
-git clone https://github.com/ileardo/solar-forecasting-mlops.git
-cd solar-forecasting-mlops
-
-# 2. Setup environment
-make setup
-conda activate solar-forecasting-mlops
-
-# 3. Start infrastructure services
-make docker-build && make docker-up
-
-# 4. Verify services are running
-make check-services
-
-# 5. Run complete workflow
-make train                         # Train model with MLflow tracking
-make predict-date DATE=2020-06-15  # Generate batch prediction
-make monitor                       # Execute monitoring analysis
-```
-
-### Service Access
-Once services are running, access the following interfaces:
-
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **MLflow** | http://localhost:5000 | Experiment tracking and model registry |
-| **Grafana** | http://localhost:3001 | Monitoring dashboards (admin/admin) |
-| **Prefect** | http://localhost:4200 | Workflow orchestration UI |
-| **Adminer** | http://localhost:8080 | Database administration |
-
-**Database Access**: The automatically generated database password is stored in the `.env` file after running `make setup`.
-
-**Note**: In GitHub Codespaces, you'll need to forward these ports to access the UIs.
 
 ## Monitoring & Alerting
 
