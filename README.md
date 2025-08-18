@@ -1,6 +1,8 @@
 # Solar Forecasting MLOps
 
-End-to-end MLOps pipeline for solar power generation forecasting using production-ready infrastructure and monitoring systems.
+End-to-end MLOps pipeline for solar power generation forecasting using production-ready infrastructure and monitoring systems, developed as the capstone project for [MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp).  
+
+**Note for Peer Reviewers**: This project, submitted for Attempt 3 of MLOps Zoomcamp 2025, was previously submitted for Attempt 2. This resubmission does not constitute self-plagiarism as the previous attempt failed due to insufficient peer reviews completed (2/3 required). As defined in the [Course Project guidelines](https://github.com/DataTalksClub/mlops-zoomcamp/tree/main/07-project) section "submitting multiple projects and self-plagiarism", resubmitting the same project after a failed attempt is permitted.
 
 ## Problem Statement
 
