@@ -2,6 +2,11 @@
 
 End-to-end MLOps pipeline for solar power generation forecasting using production-ready infrastructure and monitoring systems, developed as the capstone project for [MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp).  
 
+<div align="center">
+  <img src="docs/chart_combined_horizontal_stacked.png" alt="Solar Forecasting MLOps Overview" width="95%">
+  <p><em>24-hour solar generation forecast with model performance metrics</em></p>
+</div>
+
 ## Problem Statement
 
 This project implements a complete MLOps framework for solar power forecasting. The system predicts 24-hour solar power generation using historical data and operational constraints.
