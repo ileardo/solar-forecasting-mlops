@@ -1,6 +1,6 @@
 # Solar Forecasting MLOps
 
-End-to-end MLOps pipeline for solar power generation forecasting using production-ready infrastructure and monitoring systems, developed as the capstone project for [MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp).  
+End-to-end MLOps pipeline for solar power generation forecasting using production-ready infrastructure and monitoring systems, developed as the capstone project for [MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp).
 
 <div align="center">
   <img src="docs/chart_combined_horizontal_stacked.png" alt="Solar Forecasting MLOps Overview" width="95%">
@@ -48,11 +48,13 @@ Using [Solar Power Generation Data](https://www.kaggle.com/datasets/anikannal/so
 
 
 <div style="margin-top:30px; padding:15px; text-align:center;">
-  <a href="./docs/placeholder.png" target="_blank">
-    <img src="./docs/placeholder.png" alt="Architecture Diagram" width="300" style="display:block; margin:0 auto;" />
+  <a href="./docs/mlops_architecture.png" target="_blank">
+    <img src="./docs/mlops_architecture.png"
+         alt="Architecture Diagram"
+         style="display:block; margin:0 auto; max-width:100%; height:auto;" />
   </a>
   <p style="margin-top:10px; font-style:italic;">
-    Project architecture placeholder
+    Project architecture
   </p>
 </div>
 
